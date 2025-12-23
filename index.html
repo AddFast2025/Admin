@@ -1,9 +1,135 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-  <title>Halo Dunia</title>
+<meta charset="UTF-8">
+<title>Halaman Admin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{
+  font-family: Arial, sans-serif;
+  background:#fff;
+  margin:0;
+  padding:20px;
+  text-align:center;
+}
+
+h1{
+  margin-bottom:20px;
+}
+
+.menu-utama{
+  display:flex;
+  justify-content:center;
+  flex-wrap:wrap;
+  gap:15px;
+  margin-bottom:30px;
+}
+
+.btn-kuning{
+  background:#ffeb3b;
+  border:2px solid #333;
+  padding:12px 30px;
+  border-radius:8px;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+.btn-kuning:hover{
+  background:#fdd835;
+}
+
+.menu-isi{
+  max-width:420px;
+  margin:auto;
+}
+
+.btn-biru{
+  width:100%;
+  background:#03a9f4;
+  color:white;
+  border:none;
+  padding:15px;
+  margin-bottom:12px;
+  border-radius:10px;
+  font-size:16px;
+  cursor:pointer;
+}
+
+.btn-biru:hover{
+  background:#0288d1;
+}
+</style>
 </head>
+
 <body>
-  <h1>GitHub Pages saya aktif 🎉</h1>
+
+<h1>HALAMAN ADMIN</h1>
+
+<div class="menu-utama">
+  <button class="btn-kuning" onclick="tampilMenu('utama')">Utama</button>
+  <button class="btn-kuning" onclick="tampilMenu('subuh')">Subuh</button>
+  <button class="btn-kuning" onclick="tampilMenu('hafalan')">Hafalan</button>
+  <button class="btn-kuning" onclick="tampilMenu('absen')">Absen</button>
+</div>
+
+<div class="menu-isi" id="menuIsi"></div>
+
+<script>
+function tampilMenu(menu){
+  const box = document.getElementById("menuIsi");
+  box.innerHTML = "";
+
+  let data = {
+    utama:[
+      "Tambah Lembaga",
+      "Tambah Kelas",
+      "Tambah Rombel",
+      "Tambah Siswa",
+      "Tambah Kegiatan"
+    ],
+    subuh:[
+      "Rekap Harian",
+      "Rekap Bulanan"
+    ],
+    hafalan:[
+      "Tambah Pelajaran",
+      "Tambah Materi"
+    ],
+    absen:[
+      "Rekap Harian",
+      "Rekap Bulanan"
+    ]
+  };
+
+  data[menu].forEach(teks=>{
+    let btn = document.createElement("button");
+    btn.className = "btn-biru";
+    btn.innerText = teks;
+
+    // 👇 routing halaman
+    btn.onclick = ()=>{
+      if(menu==="subuh" && teks==="Rekap Harian"){
+        window.location.href = "rekap_subuh.html";
+      }
+      else if(menu==="subuh" && teks==="Rekap Bulanan"){
+        window.location.href = "rekap_subuh_bulanan.html";
+      }
+      else if(menu==="absen" && teks==="Rekap Harian"){
+        window.location.href = "rekap_absen.html";
+      }
+      else if(menu==="absen" && teks==="Rekap Bulanan"){
+        window.location.href = "rekap_absen_bulanan.html";
+      }
+      else{
+        alert("Halaman belum dibuat");
+      }
+    };
+
+    box.appendChild(btn);
+  });
+}
+</script>
+
 </body>
 </html>
