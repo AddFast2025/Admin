@@ -72,6 +72,8 @@ h1{
   <button class="btn-kuning" onclick="tampilMenu('hafalan')">Hafalan</button>
   <button class="btn-kuning" onclick="tampilMenu('absen')">Absen</button>
 <button class="btn-kuning" onclick="tampilMenu('keg_lain')">Kegiatan</button>
+<button class="btn-kuning" onclick="tampilMenu('portal')">Portal</button>
+
 
 </div>
 
@@ -98,6 +100,21 @@ function tampilMenu(menu){
       "Tambah Pelajaran",
       "Tambah Materi"
     ],
+
+
+
+portal:[
+
+"Guru SB2",
+"Siswa SB2",
+"Siswa SMP Ngambon",
+"Sobontoro",
+"Aku Bisa"
+    ],
+
+
+
+
 
  keg_lain:[
       "Tambah Kegiatan",
@@ -129,6 +146,35 @@ function tampilMenu(menu){
       else if(menu==="absen" && teks==="Rekap Bulanan"){
         window.location.href = "rekap_absen_bulanan.html";
       }
+
+
+
+ else if(menu==="portal" && teks==="Guru SB2"){
+        window.open("https://addfast2025.github.io/SDNSB2/","blank");
+      }
+
+
+ else if(menu==="portal" && teks==="Siswa SB2"){
+        window.open("https://addfast2025.github.io/PortalSiswaSB2/","blank");
+      }
+
+
+       
+else if(menu==="portal" && teks==="Siswa SMP Ngambon"){
+         window.open("https://addfast2025.github.io/smpn1ngambon/","blank");
+
+      }
+
+else if(menu==="portal" && teks==="Sobontoro"){
+        window.open("https://addfast2025.github.io/sobontoro2/","blank");
+      }
+
+else if(menu==="portal" && teks==="Aku Bisa"){
+        window.open("https://addfast2025.github.io/AKUBISA/","blank");
+      }
+
+
+
       else{
         alert("Halaman belum dibuat");
       }
