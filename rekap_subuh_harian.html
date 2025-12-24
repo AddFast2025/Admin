@@ -23,8 +23,17 @@ button {
 table {
   width:100%;
   border-collapse:collapse;
-  margin-top:15px;
+  margin-top:25px;
 }
+
+
+/* sembunyikan kolom Nilai */
+table th:nth-child(4),
+table td:nth-child(4){
+  display:none;
+}
+
+
 th,td {
   border:1px solid #ddd;
   padding:8px;
@@ -230,20 +239,51 @@ async function loadRekap(){
 }
 
 /* DOWNLOAD PDF */
+
+function formatTanggalIndo(tgl){
+  const bulan = [
+    "Januari","Februari","Maret","April","Mei","Juni",
+    "Juli","Agustus","September","Oktober","November","Desember"
+  ];
+
+  const [y,m,d] = tgl.split("-");
+  return `${parseInt(d)} ${bulan[parseInt(m)-1]} ${y}`;
+}
+
+
+
 window.downloadPDF = function(){
   if(!dataPDF.length) return alert("Data kosong");
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
-  doc.text("Daftar Perolehan Nilai Lapor Subuh",14,15);
-  doc.text(`Tanggal: ${tanggalEl.value}`,14,22);
+const lembagaNama = lembagaEl.options[lembagaEl.selectedIndex].text;
+const kelasNama   = kelasEl.options[kelasEl.selectedIndex].text;
+const rombelNama  = rombelEl.options[rombelEl.selectedIndex].text;
+
+ let y = 15;
+
+doc.setFontSize(14);
+doc.text("Daftar Perolehan Nilai Lapor Subuh", 14, y);
+y += 8;
+
+doc.setFontSize(11);
+doc.text(`Lembaga : ${lembagaNama}`, 14, y);
+y += 6;
+
+doc.text(`Kelas : ${kelasNama} / ${rombelNama}`, 14, y);
+y += 6;
+
+doc.text(`Tanggal : ${formatTanggalIndo(tanggalEl.value)}`, 14, y);
+
+
 
   doc.autoTable({
-    startY: 28,
-    head:[["No","Nama","Jam","Nilai","Status"]],
+    startY: 40,
+    head:[["No","Nama","Jam","Status"]],
     body: dataPDF.map((d,i)=>[
-      i+1, d.nama, d.jam, d.nilai, d.status
+      i+1, d.nama, d.jam, d.status
     ])
   });
 
@@ -257,7 +297,7 @@ window.downloadPDF = function(){
   const kelas   = getText(kelasEl).replace(/\s+/g,"_");
   const rombel  = getText(rombelEl).replace(/\s+/g,"_");
 
-  doc.save(`Rekap subuh ${lembaga}_Kls ${kelas}${rombel} ${dd}-${mm}-${yy}.pdf`);
+  doc.save(`Kls ${kelas}${rombel} ${dd}-${mm}-${yy} _Rekap subuh ${lembaga}.pdf`);
 };
 
 function reset(){
