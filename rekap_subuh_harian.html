@@ -6,11 +6,31 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
-body { font-family: Arial; background:#f4f6f8; padding:20px; }
-.card { max-width:1000px; margin:auto; background:#fff; padding:20px; border-radius:8px; }
+body {
+  font-family: Arial, sans-serif;
+  background:#f4f6f8;
+  padding:20px;
+}
 
-label { font-weight:bold; margin-top:10px; display:block; }
-select, input[type="date"], button { width:100%; padding:8px; margin-top:5px; }
+.card {
+  max-width:350px;
+  margin:auto;
+  background:#fff;
+  padding:20px;
+  border-radius:8px;
+}
+
+label {
+  font-weight:bold;
+  margin-top:10px;
+  display:block;
+}
+
+select,input[type="date"],button {
+  width:100%;
+  padding:8px;
+  margin-top:5px;
+}
 
 button {
   background:#1565c0;
@@ -23,23 +43,19 @@ button {
 table {
   width:100%;
   border-collapse:collapse;
-  margin-top:25px;
+  margin-top:15px;
 }
-
-
-/* sembunyikan kolom Nilai */
-table th:nth-child(4),
-table td:nth-child(4){
-  display:none;
-}
-
 
 th,td {
   border:1px solid #ddd;
-  padding:8px;
+  padding:6px;
   text-align:center;
 }
-th { background:#2e7d32; color:#fff; }
+
+th {
+  background:#2e7d32;
+  color:#fff;
+}
 
 .belum {
   background:#ffebee;
@@ -49,14 +65,7 @@ th { background:#2e7d32; color:#fff; }
 
 .loading {
   text-align:center;
-  margin-top:15px;
-  font-weight:bold;
-}
-
-.rekap {
-  margin-top:15px;
-  padding:10px;
-  background:#e8f5e9;
+  margin-top:10px;
   font-weight:bold;
 }
 </style>
@@ -65,7 +74,7 @@ th { background:#2e7d32; color:#fff; }
 <body>
 
 <div class="card">
-<h2 align="center">📋 Rekap Lapor Subuh Harian</h2>
+<h3 align="center">📋 Rekap Lapor Subuh</h3>
 
 <label>Tanggal</label>
 <input type="date" id="tanggal">
@@ -87,16 +96,12 @@ th { background:#2e7d32; color:#fff; }
 <thead>
 <tr>
   <th>No</th>
-  <th>Nama Siswa</th>
+  <th>Nama</th>
   <th>Jam</th>
-  <th>Nilai</th>
-  <th>Status</th>
 </tr>
 </thead>
 <tbody id="tbody"></tbody>
 </table>
-
-<div class="rekap" id="rekap" style="display:none"></div>
 </div>
 
 <!-- PDF -->
@@ -114,6 +119,7 @@ const firebaseConfig = {
   authDomain: "datasiswa-c10f4.firebaseapp.com",
   projectId: "datasiswa-c10f4"
 };
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
@@ -125,17 +131,11 @@ const rombelEl = document.getElementById("rombel");
 const tbody = document.getElementById("tbody");
 const tabel = document.getElementById("tabel");
 const loading = document.getElementById("loading");
-const rekap = document.getElementById("rekap");
 
 let dataPDF = [];
 
 /* DEFAULT TANGGAL */
 tanggalEl.value = new Date().toISOString().split("T")[0];
-
-/* HELPER */
-function getText(selectEl){
-  return selectEl.options[selectEl.selectedIndex]?.text || "NA";
-}
 
 /* LOAD LEMBAGA */
 (async()=>{
@@ -198,47 +198,46 @@ async function loadRekap(){
   );
 
   const laporan = {};
-  laporSnap.forEach(d=>laporan[d.data().siswaId]=d.data());
+  laporSnap.forEach(d=>{
+    laporan[d.data().siswaId] = d.data();
+  });
 
-  const siswa=[];
+  const siswa = [];
   siswaSnap.forEach(s=>siswa.push({id:s.id,...s.data()}));
 
   dataPDF = siswa.map(s=>{
     const r = laporan[s.id];
     return {
       nama: s.nama,
-      jam: r ? r.jam : "-",
-      nilai: r ? r.nilai : 0,
-      status: r ? "Lapor" : "Belum"
+      jam: r ? r.jam : "Nihil"
     };
   });
 
-  /* SORT NILAI TERTINGGI */
-  dataPDF.sort((a,b)=> b.nilai - a.nilai);
+  /* SORT JAM TERAWAL, NIHIL DI BAWAH */
+  dataPDF.sort((a,b)=>{
+    if(a.jam === "Nihil") return 1;
+    if(b.jam === "Nihil") return -1;
+    return a.jam.localeCompare(b.jam);
+  });
 
-  let hadir = 0;
-  tbody.innerHTML = "";
-
+  tbody.innerHTML="";
   dataPDF.forEach((d,i)=>{
-    if(d.status==="Lapor") hadir++;
     tbody.innerHTML+=`
-      <tr class="${d.status==="Belum"?"belum":""}">
+      <tr class="${d.jam==="Nihil"?"belum":""}">
         <td>${i+1}</td>
         <td>${d.nama}</td>
         <td>${d.jam}</td>
-        <td>${d.nilai}</td>
-        <td>${d.status==="Lapor"?"✅":"❌"}</td>
       </tr>
     `;
   });
 
-  rekap.innerHTML=`Hadir: ${hadir} / ${dataPDF.length} siswa`;
   loading.style.display="none";
   tabel.style.display="table";
-  rekap.style.display="block";
 }
 
-/* DOWNLOAD PDF */
+function getText(selectEl){
+  return selectEl.options[selectEl.selectedIndex]?.text || "NA";
+}
 
 function formatTanggalIndo(tgl){
   const bulan = [
@@ -251,7 +250,7 @@ function formatTanggalIndo(tgl){
 }
 
 
-
+/* PDF */
 window.downloadPDF = function(){
   if(!dataPDF.length) return alert("Data kosong");
 
@@ -265,7 +264,7 @@ const rombelNama  = rombelEl.options[rombelEl.selectedIndex].text;
  let y = 15;
 
 doc.setFontSize(14);
-doc.text("Daftar Perolehan Nilai Lapor Subuh", 14, y);
+doc.text("Daftar Lapor Subuh", 14, y);
 y += 8;
 
 doc.setFontSize(11);
@@ -277,19 +276,15 @@ y += 6;
 
 doc.text(`Tanggal : ${formatTanggalIndo(tanggalEl.value)}`, 14, y);
 
-
-
   doc.autoTable({
-    startY: 40,
-    tableWidth: 90,        // ≈ 350px
-  margin: { left: 14 },  // posisinya tetap rapi
-    head:[["No","Nama","Jam","Status"]],
-    body: dataPDF.map((d,i)=>[
-      i+1, d.nama, d.jam, d.status
-    ])
+    startY:38,
+    tableWidth:90,
+    margin:{left:14},
+    head:[["No","Nama","Jam"]],
+    body:dataPDF.map((d,i)=>[i+1,d.nama,d.jam])
   });
 
-  /* NAMA FILE */
+   /* NAMA FILE */
   const t = new Date(tanggalEl.value);
   const dd = String(t.getDate()).padStart(2,"0");
   const mm = String(t.getMonth()+1).padStart(2,"0");
@@ -300,12 +295,15 @@ doc.text(`Tanggal : ${formatTanggalIndo(tanggalEl.value)}`, 14, y);
   const rombel  = getText(rombelEl).replace(/\s+/g,"_");
 
   doc.save(`Kls ${kelas}${rombel} ${dd}-${mm}-${yy} _Rekap subuh ${lembaga}.pdf`);
+
+alert("✅ File PDF berhasil di-download");
+const audio = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
+audio.play();
 };
 
 function reset(){
   tbody.innerHTML="";
   tabel.style.display="none";
-  rekap.style.display="none";
   loading.style.display="none";
 }
 </script>
