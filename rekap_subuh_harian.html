@@ -281,6 +281,8 @@ doc.text(`Tanggal : ${formatTanggalIndo(tanggalEl.value)}`, 14, y);
 
   doc.autoTable({
     startY: 40,
+    tableWidth: 90,        // ≈ 350px
+  margin: { left: 14 },  // posisinya tetap rapi
     head:[["No","Nama","Jam","Status"]],
     body: dataPDF.map((d,i)=>[
       i+1, d.nama, d.jam, d.status
