@@ -276,13 +276,35 @@ y += 6;
 
 doc.text(`Tanggal : ${formatTanggalIndo(tanggalEl.value)}`, 14, y);
 
-  doc.autoTable({
-    startY:38,
-    tableWidth:90,
-    margin:{left:14},
-    head:[["No","Nama","Jam"]],
-    body:dataPDF.map((d,i)=>[i+1,d.nama,d.jam])
-  });
+
+
+doc.autoTable({
+  startY: 39,
+  tableWidth: 90,      // ±350px
+  margin: { left: 14 },
+
+  head: [["No","Nama","Jam"]],
+
+  body: dataPDF.map((d,i)=>[
+    i+1,
+    d.nama,
+    d.jam
+  ]),
+
+  didParseCell: function (data) {
+    // hanya baris body
+    if (data.section === "body") {
+      const jam = data.row.raw[2]; // kolom Jam
+
+      if (jam === "Nihil") {
+        data.cell.styles.textColor = [198, 40, 40]; // MERAH
+        data.cell.styles.fontStyle = "bold";
+      }
+    }
+  }
+});
+
+
 
    /* NAMA FILE */
   const t = new Date(tanggalEl.value);
