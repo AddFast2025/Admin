@@ -20,10 +20,19 @@ button {
   cursor:pointer;
 }
 
+.note {
+  margin-top:15px;
+  padding:10px;
+  background:#eef2ff;
+  border-left:5px solid #3949ab;
+  font-weight:bold;
+  display:none;
+}
+
 table {
   width:100%;
   border-collapse:collapse;
-  margin-top:25px;
+  margin-top:15px;
 }
 th,td {
   border:1px solid #ddd;
@@ -90,13 +99,15 @@ th {
   <div>Memuat data...</div>
 </div>
 
+<div id="note" class="note"></div>
+
 <table id="rekapTable" style="display:none">
 <thead>
 <tr>
   <th>Peringkat</th>
   <th>Kelas</th>
   <th>Kehadiran</th>
-  <th>Persentase</th>
+  <th>Ketaatan (%)</th>
 </tr>
 </thead>
 <tbody id="rekapBody"></tbody>
@@ -128,6 +139,7 @@ const bodyEl = document.getElementById("rekapBody");
 const tableEl = document.getElementById("rekapTable");
 const kosongEl = document.getElementById("kosong");
 const loadingEl = document.getElementById("loading");
+const noteEl = document.getElementById("note");
 
 /* tanggal hari ini */
 tanggalEl.value = new Date().toLocaleDateString("en-CA");
@@ -145,6 +157,7 @@ window.loadRekap = async ()=>{
   bodyEl.innerHTML="";
   tableEl.style.display="none";
   kosongEl.style.display="none";
+  noteEl.style.display="none";
   loadingEl.style.display="block";
 
   const tanggal = tanggalEl.value;
@@ -155,14 +168,17 @@ window.loadRekap = async ()=>{
     return;
   }
 
-  /* 1. kelas */
+  const lembagaNama =
+    lembagaEl.options[lembagaEl.selectedIndex].text;
+
+  /* kelas */
   const kelasSnap = await getDocs(
     query(collection(db,"kelas"), where("lembagaId","==",lembagaId))
   );
   const mapKelas = {};
   kelasSnap.forEach(d=>mapKelas[d.id]=d.data().nama);
 
-  /* 2. rombel */
+  /* rombel */
   const rombelSnap = await getDocs(
     query(collection(db,"rombel"), where("lembagaId","==",lembagaId))
   );
@@ -174,17 +190,20 @@ window.loadRekap = async ()=>{
     };
   });
 
-  /* 3. siswa */
+  /* siswa */
   const siswaSnap = await getDocs(
     query(collection(db,"siswa"), where("lembagaId","==",lembagaId))
   );
   const mapTotalSiswa = {};
+  let totalSiswaLembaga = 0;
+
   siswaSnap.forEach(d=>{
     const r = d.data().rombelId;
     mapTotalSiswa[r] = (mapTotalSiswa[r]||0)+1;
+    totalSiswaLembaga++;
   });
 
-  /* 4. lapor subuh */
+  /* lapor subuh */
   const laporSnap = await getDocs(
     query(
       collection(db,"lapor_subuh"),
@@ -193,24 +212,34 @@ window.loadRekap = async ()=>{
     )
   );
 
-  const map = {};
+  const mapHadir = {};
+  const hadirSet = new Set();
+
   laporSnap.forEach(d=>{
     const r = d.data();
-    if(!map[r.rombelId]){
-      map[r.rombelId]={ totalNilai:0, hadir:new Set() };
+    if(!mapHadir[r.rombelId]){
+      mapHadir[r.rombelId] = new Set();
     }
-    map[r.rombelId].totalNilai += r.nilai;
-    map[r.rombelId].hadir.add(r.siswaId);
+    mapHadir[r.rombelId].add(r.siswaId);
+    hadirSet.add(r.siswaId);
   });
 
-  /* hitung */
+  /* catatan lembaga */
+  const persenLembaga = totalSiswaLembaga
+    ? ((hadirSet.size/totalSiswaLembaga)*100).toFixed(1)
+    : 0;
+
+  noteEl.innerHTML =
+    `Lapor sholat subuh <b>${lembagaNama}</b> dari <b>${totalSiswaLembaga}</b> siswa, lapor subuh <b>${hadirSet.size}</b> siswa. Ketaatan Lapor Subuh <b>${persenLembaga}%</b>`;
+  noteEl.style.display="block";
+
+  /* hasil per kelas */
   const hasil=[];
   for(const rombelId in mapTotalSiswa){
     const totalSiswa = mapTotalSiswa[rombelId];
-    const data = map[rombelId] || { totalNilai:0, hadir:new Set() };
-    const maksimal = totalSiswa * 5;
-    const persen = maksimal
-      ? Number(((data.totalNilai/maksimal)*100).toFixed(1))
+    const hadir = mapHadir[rombelId]?.size || 0;
+    const persen = totalSiswa
+      ? Number(((hadir/totalSiswa)*100).toFixed(1))
       : 0;
 
     const info = mapRombel[rombelId] || {};
@@ -219,7 +248,7 @@ window.loadRekap = async ()=>{
 
     hasil.push({
       kelasRombel: kelasNama+rombelNama,
-      hadir:data.hadir.size,
+      hadir,
       totalSiswa,
       persen
     });
