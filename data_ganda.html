@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Deteksi & Hapus Lapor Subuh Ganda</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body { font-family: Arial; background:#f4f6f8; padding:20px; }
+.card { max-width:1100px; margin:auto; background:#fff; padding:20px; border-radius:8px; }
+
+label { font-weight:bold; display:block; margin-top:10px; }
+select,input,button { width:100%; padding:8px; margin-top:5px; }
+
+button.main {
+  background:#c62828;
+  color:white;
+  border:none;
+  margin-top:15px;
+  cursor:pointer;
+}
+
+table {
+  width:100%;
+  border-collapse:collapse;
+  margin-top:20px;
+}
+th,td {
+  border:1px solid #ddd;
+  padding:8px;
+  text-align:center;
+}
+th {
+  background:#b71c1c;
+  color:white;
+}
+
+.ganda {
+  background:#ffebee;
+  color:#b71c1c;
+  font-weight:bold;
+}
+
+.btn-hapus {
+  background:#b71c1c;
+  color:white;
+  border:none;
+  padding:6px 10px;
+  cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+<h2 align="center">🚨 Deteksi & Hapus Lapor Subuh Ganda</h2>
+
+<label>Tanggal</label>
+<input type="date" id="tanggal">
+
+<label>Lembaga</label>
+<select id="lembaga">
+  <option value="">Pilih Lembaga</option>
+</select>
+
+<button class="main" onclick="cekGanda()">🔍 Cek Laporan Ganda</button>
+
+<table id="tabel" style="display:none">
+<thead>
+<tr>
+  <th>No</th>
+  <th>Nama Siswa</th>
+  <th>Kelas / Rombel</th>
+  <th>Jumlah Lapor</th>
+  <th>Aksi</th>
+</tr>
+</thead>
+<tbody id="tbody"></tbody>
+</table>
+
+<div id="kosong" style="display:none;text-align:center;margin-top:15px">
+✅ Tidak ditemukan laporan ganda
+</div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getFirestore, collection, getDocs,
+  query, where, deleteDoc, doc
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+/* CONFIG */
+const firebaseConfig = {
+  apiKey: "AIzaSyD8SIXXPm_c-TJiaRjHbrishFtU2NICm9M",
+  authDomain: "datasiswa-c10f4.firebaseapp.com",
+  projectId: "datasiswa-c10f4"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+/* ELEMENT */
+const lembagaEl = document.getElementById("lembaga");
+const tbody = document.getElementById("tbody");
+const tabel = document.getElementById("tabel");
+const kosong = document.getElementById("kosong");
+
+/* tanggal hari ini */
+document.getElementById("tanggal").value =
+  new Date().toLocaleDateString("en-CA");
+
+/* load lembaga */
+async function loadLembaga(){
+  const snap = await getDocs(collection(db,"lembaga"));
+  snap.forEach(d=>{
+    lembagaEl.innerHTML +=
+      `<option value="${d.id}">${d.data().nama}</option>`;
+  });
+}
+loadLembaga();
+
+/* CEK DATA GANDA */
+window.cekGanda = async ()=>{
+  tbody.innerHTML="";
+  tabel.style.display="none";
+  kosong.style.display="none";
+
+  const tanggal = document.getElementById("tanggal").value;
+  const lembagaId = lembagaEl.value;
+  if(!tanggal || !lembagaId){
+    alert("Lengkapi filter");
+    return;
+  }
+
+  /* map rombel */
+  const rombelSnap = await getDocs(
+    query(collection(db,"rombel"), where("lembagaId","==",lembagaId))
+  );
+  const rombelMap = {};
+  rombelSnap.forEach(r=>rombelMap[r.id]=r.data().nama);
+
+  /* ambil lapor hari ini */
+  const laporSnap = await getDocs(
+    query(
+      collection(db,"lapor_subuh"),
+      where("tanggal","==",tanggal),
+      where("lembagaId","==",lembagaId)
+    )
+  );
+
+  const counter = {};
+  laporSnap.forEach(d=>{
+    const r = d.data();
+    const key = r.rombelId+"_"+r.siswaId;
+
+    if(!counter[key]){
+      counter[key] = {
+        siswaId: r.siswaId,
+        nama: r.nama,
+        rombelId: r.rombelId,
+        jumlah: 0
+      };
+    }
+    counter[key].jumlah++;
+  });
+
+  const hasil = Object.values(counter).filter(r=>r.jumlah>1);
+
+  if(hasil.length===0){
+    kosong.style.display="block";
+    return;
+  }
+
+  hasil.forEach((r,i)=>{
+    tbody.innerHTML += `
+      <tr class="ganda">
+        <td>${i+1}</td>
+        <td>${r.nama}</td>
+        <td>${rombelMap[r.rombelId]||"-"}</td>
+        <td>${r.jumlah}x</td>
+        <td>
+          <button class="btn-hapus"
+            onclick="hapusGanda('${r.siswaId}','${r.rombelId}')">
+            Hapus (Sisakan 1)
+          </button>
+        </td>
+      </tr>
+    `;
+  });
+
+  tabel.style.display="table";
+};
+
+/* HAPUS DATA GANDA – SISAKAN 1 */
+window.hapusGanda = async (siswaId, rombelId)=>{
+  if(!confirm("Yakin hapus laporan ganda? Sisakan 1 data.")) return;
+
+  const tanggal = document.getElementById("tanggal").value;
+  const lembagaId = lembagaEl.value;
+
+  const snap = await getDocs(
+    query(
+      collection(db,"lapor_subuh"),
+      where("tanggal","==",tanggal),
+      where("lembagaId","==",lembagaId),
+      where("rombelId","==",rombelId),
+      where("siswaId","==",siswaId)
+    )
+  );
+
+  if(snap.size<=1){
+    alert("Tidak ada data ganda");
+    return;
+  }
+
+  /* urutkan manual (aman tanpa index) */
+  const docs = snap.docs.sort((a,b)=>{
+    const ta = a.data().dibuat?.seconds || 0;
+    const tb = b.data().dibuat?.seconds || 0;
+    return ta - tb;
+  });
+
+  /* hapus selain yang pertama */
+  for(let i=1;i<docs.length;i++){
+    await deleteDoc(doc(db,"lapor_subuh",docs[i].id));
+  }
+
+  alert("✅ Data ganda berhasil dihapus");
+  cekGanda();
+};
+</script>
+
+</body>
+</html>
