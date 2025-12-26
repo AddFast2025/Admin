@@ -96,7 +96,9 @@ function tampilMenu(menu){
       "Data Ganda",
       "Rekap Kelas",
       "Rekap Harian",
-      "Rekap Bulanan"
+       "Filter Nilai",
+      "Rekap Bulanan",
+       "Subuh 2026"
     ],
     hafalan:[
       "Tambah Pelajaran",
@@ -111,8 +113,8 @@ portal:[
 "Siswa SB2",
 "Siswa SMP Ngambon",
 "Sobontoro",
-"Aku Bisa",
-  "Subuh 2026"
+"Aku Bisa"
+ 
     ],
 
 
@@ -149,7 +151,16 @@ portal:[
       else if(menu==="subuh" && teks==="Rekap Kelas"){
         window.location.href = "rekap_subuh_kelas.html";
       }
+else if(menu==="subuh" && teks==="Filter Nilai"){
+        window.location.href = "filter_nilai_subuh.html";
+      }
+  else if(menu==="subuh" && teks==="Subuh 2026"){
+        window.open("lapor_subuh_2026.html","blank");
+      }
 
+
+
+  
 
         
       else if(menu==="absen" && teks==="Rekap Harian"){
@@ -186,9 +197,7 @@ else if(menu==="portal" && teks==="Aku Bisa"){
       }
 
 
-  else if(menu==="portal" && teks==="Subuh 2026"){
-        window.open("lapor_subuh_2026.html","blank");
-      }
+  
 
 
 
