@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Pencarian Nilai Subuh</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body { font-family: Arial; background:#f4f6f8; padding:15px; }
+.card { max-width:420px; margin:auto; background:#fff; padding:15px; border-radius:8px; }
+
+label { font-weight:bold; display:block; margin-top:10px; }
+select,input,textarea,button {
+  width:100%;
+  padding:8px;
+  margin-top:5px;
+}
+
+button {
+  background:#1565c0;
+  color:white;
+  border:none;
+  margin-top:10px;
+  cursor:pointer;
+}
+
+.download {
+  background:#2e7d32;
+}
+
+table {
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+  font-size:13px;
+}
+th,td {
+  border:1px solid #ccc;
+  padding:6px;
+  text-align:center;
+}
+th {
+  background:#2e7d32;
+  color:white;
+}
+
+.hidden { display:none; }
+</style>
+</head>
+
+<body>
+
+<div class="card">
+<h3 align="center">🔍 Pencarian Nilai Subuh</h3>
+
+<label>Lembaga</label>
+<select id="lembaga"><option value="">Pilih</option></select>
+
+<label>Bulan</label>
+<input type="month" id="bulan">
+
+<label>Nilai dari</label>
+<input type="number" id="nilaiMin" value="0">
+
+<label>Nilai sampai</label>
+<input type="number" id="nilaiMax" value="0">
+
+<label>Deskripsi</label>
+<textarea id="deskripsi" rows="2"></textarea>
+
+<button onclick="tampilkan()">Tampilkan</button>
+
+<!-- TOMBOL DOWNLOAD (DI ATAS TABEL) -->
+<button id="btnDownload" class="download hidden" onclick="downloadPDF()">
+⬇ Download PDF
+</button>
+
+<table id="tabel" class="hidden">
+<thead>
+<tr>
+  <th>No</th>
+  <th>Kelas / Rombel</th>
+  <th>Nama</th>
+  <th>Nilai</th>
+</tr>
+</thead>
+<tbody id="tbody"></tbody>
+</table>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyD8SIXXPm_c-TJiaRjHbrishFtU2NICm9M",
+  authDomain: "datasiswa-c10f4.firebaseapp.com",
+  projectId: "datasiswa-c10f4"
+});
+const db = getFirestore(app);
+
+const lembagaEl = document.getElementById("lembaga");
+const bulanEl = document.getElementById("bulan");
+const tbody = document.getElementById("tbody");
+const tabel = document.getElementById("tabel");
+const btnDownload = document.getElementById("btnDownload");
+
+let dataPDF = [];
+let namaLembaga = "";
+
+/* bulan otomatis */
+bulanEl.value = new Date().toISOString().slice(0,7);
+
+/* load lembaga */
+const lembagaSnap = await getDocs(collection(db,"lembaga"));
+lembagaSnap.forEach(d=>{
+  lembagaEl.innerHTML += `<option value="${d.id}">${d.data().nama}</option>`;
+});
+
+window.tampilkan = async ()=>{
+  tbody.innerHTML="";
+  tabel.classList.add("hidden");
+  btnDownload.classList.add("hidden");
+  dataPDF = [];
+
+  if(!lembagaEl.value) return alert("Pilih lembaga");
+
+  namaLembaga = lembagaEl.options[lembagaEl.selectedIndex].text;
+  const hasil = [];
+
+  const kelasSnap = await getDocs(
+    query(collection(db,"kelas"), where("lembagaId","==",lembagaEl.value))
+  );
+
+  for(const k of kelasSnap.docs){
+    const rombelSnap = await getDocs(
+      query(collection(db,"rombel"), where("kelasId","==",k.id))
+    );
+
+    for(const r of rombelSnap.docs){
+      const siswaSnap = await getDocs(
+        query(collection(db,"siswa"), where("rombelId","==",r.id))
+      );
+
+      const map = {};
+      siswaSnap.forEach(s=>{
+        map[s.id] = { nama:s.data().nama, total:0 };
+      });
+
+      const laporSnap = await getDocs(
+        query(collection(db,"lapor_subuh"),
+        where("bulan","==",bulanEl.value),
+        where("rombelId","==",r.id))
+      );
+
+      laporSnap.forEach(l=>{
+        if(map[l.data().siswaId]){
+          map[l.data().siswaId].total += l.data().nilai;
+        }
+      });
+
+      Object.values(map).forEach(v=>{
+        hasil.push({
+          kelas: parseInt(k.data().nama),
+          rombel: r.data().nama,
+          kr: `${k.data().nama}/${r.data().nama}`,
+          nama: v.nama,
+          nilai: v.total
+        });
+      });
+    }
+  }
+
+  hasil
+    .filter(d=>d.nilai>=nilaiMin.value && d.nilai<=nilaiMax.value)
+    .sort((a,b)=>{
+      if(a.kelas!==b.kelas) return a.kelas-b.kelas;
+      if(a.rombel!==b.rombel) return a.rombel.localeCompare(b.rombel);
+      return b.nilai-a.nilai;
+    })
+    .forEach((d,i)=>{
+      tbody.innerHTML+=`
+      <tr>
+        <td>${i+1}</td>
+        <td>${d.kr}</td>
+        <td>${d.nama}</td>
+        <td>${d.nilai}</td>
+      </tr>`;
+      dataPDF.push(d);
+    });
+
+  if(!dataPDF.length) return alert("Tidak ada data");
+
+  btnDownload.classList.remove("hidden");
+  tabel.classList.remove("hidden");
+};
+
+  
+  
+  
+  
+/* DOWNLOAD LANGSUNG */
+  
+  
+  window.downloadPDF = ()=>{
+  const { jsPDF } = window.jspdf;
+
+  const doc = new jsPDF({
+    unit: "px",
+    format: [200, 800]
+  });
+
+  const now = new Date();
+  const waktu =
+    now.toLocaleDateString("id-ID") +
+    " " +
+    now.toLocaleTimeString("id-ID");
+
+  let y = 16;
+
+  /* ===== JUDUL ===== */
+  doc.setFontSize(12);
+  doc.text("DAFTAR NILAI SUBUH SISWA", 6, y);
+  y += 11;
+
+  doc.setFontSize(11);
+  doc.text(`${namaLembaga}`, 6, y); y += 9;
+  doc.text(`Periode : ${bulanEl.value}`, 6, y); y += 9;
+
+  if (deskripsi.value) {
+    const desk = doc.splitTextToSize(deskripsi.value, 188);
+    doc.text(desk, 6, y);
+    y += desk.length * 8;
+  }
+
+  y += 6;
+    
+    
+    
+    
+
+  /* ===== HEADER TABEL (BIRU) ===== */
+  /* ===== HEADER TABEL (BIRU & CENTER) ===== */
+const headerHeight = 14;
+
+// background header
+doc.setFillColor(30, 136, 229); // biru
+doc.rect(4, y, 192, headerHeight, "F");
+
+// hitung posisi tengah vertikal teks
+doc.setFontSize(11);
+doc.setTextColor(255, 255, 255);
+
+// rumus tengah vertikal:
+// y + (tinggiHeader / 2) + (fontSize / 2.8)
+const textY = y + 8;
+
+// teks header (center horizontal & vertical)
+doc.text("No", 12, textY, { align: "center" });
+doc.text("Kls", 26, textY, { align: "center" });
+doc.text("Nama", 90, textY, { align: "center" });
+doc.text("Nilai", 180, textY, { align: "center" });
+
+// reset warna teks
+doc.setTextColor(0, 0, 0);
+
+// geser y ke bawah setelah header
+y += headerHeight + 4;
+    
+    
+    
+    
+    
+
+  /* ===== ISI DATA ===== */
+  dataPDF.forEach((d, i) => {
+
+    const namaWrap = doc.splitTextToSize(d.nama, 90); // ikut geser kiri
+    const tinggi = namaWrap.length * 8;
+
+    /* WARNA SELANG-SELING */
+    if (i % 2 === 0) {
+      doc.setFillColor(255, 249, 196); // kuning terang
+    } else {
+      doc.setFillColor(215, 204, 200); // coklat terang
+    }
+    doc.rect(4, y - 6, 192, tinggi + 4, "F");
+
+    doc.setFontSize(10);
+    doc.text(String(i + 1), 6, y);
+    doc.text(d.kr, 26, y, { align: "center" });
+    doc.text(namaWrap, 54, y);          // ⬅ kolom nama geser kiri
+    doc.text(String(d.nilai), 180, y, { align: "center" });
+
+    y += tinggi + 4;
+
+    if (y > 760) {
+      doc.addPage();
+      y = 16;
+    }
+  });
+
+  /* ===== FOOTER ===== */
+  y += 8;
+  doc.setFontSize(8);
+  doc.text(`Dicetak : ${waktu}`, 6, y);
+
+  /* ===== FORCE DOWNLOAD ===== */
+  const blob = doc.output("blob");
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `nilai_subuh_${namaLembaga}_${bulanEl.value}  ${waktu}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  alert("✅ File PDF berhasil diunduh");
+};
+  
+  
+  
+  
+  
+  
+</script>
+
+</body>
+</html>
