@@ -35,10 +35,38 @@ th {
   color:white;
 }
 
+/* ranking */
 .rank1 { background:#fdebd0; font-weight:bold; }
 .rank2 { background:#fff8e1; font-weight:bold; }
 .rank3 { background:#f1f5f9; }
 .rankLain { background:#fafafa; }
+
+/* merah < 50% */
+.low {
+  background:#ffebee !important;
+  color:#c62828;
+  font-weight:bold;
+}
+
+/* loading */
+#loading {
+  display:none;
+  text-align:center;
+  margin-top:15px;
+  font-weight:bold;
+}
+.spinner {
+  width:30px;
+  height:30px;
+  border:4px solid #ddd;
+  border-top:4px solid #1565c0;
+  border-radius:50%;
+  animation: spin 1s linear infinite;
+  margin:auto;
+}
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
 </style>
 </head>
 
@@ -57,13 +85,18 @@ th {
 
 <button onclick="loadRekap()">Tampilkan Ranking</button>
 
+<div id="loading">
+  <div class="spinner"></div>
+  <div>Memuat data...</div>
+</div>
+
 <table id="rekapTable" style="display:none">
 <thead>
 <tr>
   <th>Peringkat</th>
   <th>Kelas</th>
   <th>Kehadiran</th>
-  <th>Persentase Capaian</th>
+  <th>Persentase</th>
 </tr>
 </thead>
 <tbody id="rekapBody"></tbody>
@@ -72,14 +105,12 @@ th {
 <div id="kosong" style="display:none;text-align:center;margin-top:15px">
 ❌ Tidak ada data
 </div>
-
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import {
-  getFirestore, collection, getDocs,
-  query, where
+  getFirestore, collection, getDocs, query, where
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -91,102 +122,122 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+const tanggalEl = document.getElementById("tanggal");
 const lembagaEl = document.getElementById("lembaga");
 const bodyEl = document.getElementById("rekapBody");
 const tableEl = document.getElementById("rekapTable");
 const kosongEl = document.getElementById("kosong");
+const loadingEl = document.getElementById("loading");
 
 /* tanggal hari ini */
-document.getElementById("tanggal").value =
-  new Date().toLocaleDateString("en-CA");
+tanggalEl.value = new Date().toLocaleDateString("en-CA");
 
 /* load lembaga */
-async function loadLembaga(){
+(async ()=>{
   const snap = await getDocs(collection(db,"lembaga"));
   snap.forEach(d=>{
     lembagaEl.innerHTML +=
       `<option value="${d.id}">${d.data().nama}</option>`;
   });
-}
-loadLembaga();
+})();
 
 window.loadRekap = async ()=>{
   bodyEl.innerHTML="";
   tableEl.style.display="none";
   kosongEl.style.display="none";
+  loadingEl.style.display="block";
 
-  const tanggal = document.getElementById("tanggal").value;
+  const tanggal = tanggalEl.value;
   const lembagaId = lembagaEl.value;
-
   if(!tanggal || !lembagaId){
     alert("Lengkapi filter");
+    loadingEl.style.display="none";
     return;
   }
 
-  const hasil = [];
-
+  /* 1. kelas */
   const kelasSnap = await getDocs(
     query(collection(db,"kelas"), where("lembagaId","==",lembagaId))
   );
+  const mapKelas = {};
+  kelasSnap.forEach(d=>mapKelas[d.id]=d.data().nama);
 
-  for(const k of kelasSnap.docs){
-    const kelas = k.data();
+  /* 2. rombel */
+  const rombelSnap = await getDocs(
+    query(collection(db,"rombel"), where("lembagaId","==",lembagaId))
+  );
+  const mapRombel = {};
+  rombelSnap.forEach(d=>{
+    mapRombel[d.id] = {
+      nama:d.data().nama,
+      kelasId:d.data().kelasId
+    };
+  });
 
-    const rombelSnap = await getDocs(
-      query(collection(db,"rombel"), where("kelasId","==",k.id))
-    );
+  /* 3. siswa */
+  const siswaSnap = await getDocs(
+    query(collection(db,"siswa"), where("lembagaId","==",lembagaId))
+  );
+  const mapTotalSiswa = {};
+  siswaSnap.forEach(d=>{
+    const r = d.data().rombelId;
+    mapTotalSiswa[r] = (mapTotalSiswa[r]||0)+1;
+  });
 
-    for(const r of rombelSnap.docs){
-      const rombel = r.data();
+  /* 4. lapor subuh */
+  const laporSnap = await getDocs(
+    query(
+      collection(db,"lapor_subuh"),
+      where("tanggal","==",tanggal),
+      where("lembagaId","==",lembagaId)
+    )
+  );
 
-      const siswaSnap = await getDocs(
-        query(collection(db,"siswa"), where("rombelId","==",r.id))
-      );
-
-      const totalSiswa = siswaSnap.size;
-      if(totalSiswa === 0) continue;
-
-      let totalNilai = 0;
-      const mapHadir = new Set();
-
-      const laporSnap = await getDocs(
-        query(
-          collection(db,"lapor_subuh"),
-          where("tanggal","==",tanggal),
-          where("rombelId","==",r.id)
-        )
-      );
-
-      laporSnap.forEach(d=>{
-        totalNilai += d.data().nilai;
-        mapHadir.add(d.data().siswaId); // hitung siswa unik
-      });
-
-      const hadir = mapHadir.size;
-      const maksimal = totalSiswa * 5;
-      const persen = maksimal === 0
-        ? 0
-        : Number(((totalNilai / maksimal) * 100).toFixed(1));
-
-      hasil.push({
-        kelasRombel: `${kelas.nama}${rombel.nama}`,
-        hadir,
-        totalSiswa,
-        persen
-      });
+  const map = {};
+  laporSnap.forEach(d=>{
+    const r = d.data();
+    if(!map[r.rombelId]){
+      map[r.rombelId]={ totalNilai:0, hadir:new Set() };
     }
+    map[r.rombelId].totalNilai += r.nilai;
+    map[r.rombelId].hadir.add(r.siswaId);
+  });
+
+  /* hitung */
+  const hasil=[];
+  for(const rombelId in mapTotalSiswa){
+    const totalSiswa = mapTotalSiswa[rombelId];
+    const data = map[rombelId] || { totalNilai:0, hadir:new Set() };
+    const maksimal = totalSiswa * 5;
+    const persen = maksimal
+      ? Number(((data.totalNilai/maksimal)*100).toFixed(1))
+      : 0;
+
+    const info = mapRombel[rombelId] || {};
+    const kelasNama = mapKelas[info.kelasId] || "";
+    const rombelNama = info.nama || "";
+
+    hasil.push({
+      kelasRombel: kelasNama+rombelNama,
+      hadir:data.hadir.size,
+      totalSiswa,
+      persen
+    });
   }
 
-  if(hasil.length === 0){
+  loadingEl.style.display="none";
+
+  if(!hasil.length){
     kosongEl.style.display="block";
     return;
   }
 
-  hasil.sort((a,b)=>b.persen - a.persen);
+  hasil.sort((a,b)=>b.persen-a.persen);
 
   hasil.forEach((r,i)=>{
     let cls="rankLain";
-    if(i===0) cls="rank1";
+    if(r.persen < 50) cls="low";
+    else if(i===0) cls="rank1";
     else if(i===1) cls="rank2";
     else if(i===2) cls="rank3";
 
