@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Hapus Laporan Subuh</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body { font-family: Arial; background:#f4f6f8; padding:20px; }
+.card { max-width:900px; margin:auto; background:#fff; padding:20px; border-radius:8px; }
+label { font-weight:bold; display:block; margin-top:10px; }
+select,input,button { width:100%; padding:8px; margin-top:5px; }
+
+table { width:100%; border-collapse:collapse; margin-top:20px; }
+th,td { border:1px solid #ddd; padding:8px; text-align:center; }
+th { background:#2e7d32; color:white; }
+
+.btnDel { background:#c62828; color:#fff; border:none; padding:4px 8px; cursor:pointer; }
+.btnAll { background:#b71c1c; color:#fff; border:none; padding:10px; margin-top:15px; font-weight:bold; cursor:pointer; }
+
+.loading { margin-top:15px; color:#555; font-style:italic; }
+</style>
+</head>
+<body>
+
+<div class="card">
+<h2 align="center">🗑️ Hapus Laporan Subuh</h2>
+
+<label>Lembaga</label>
+<select id="lembaga"><option value="">Pilih</option></select>
+
+<label>Kelas</label>
+<select id="kelas"><option value="">Pilih</option></select>
+
+<label>Rombel</label>
+<select id="rombel"><option value="">Pilih</option></select>
+
+<label>Tanggal</label>
+<input type="date" id="tanggal">
+
+<button id="btnHapusSemua" class="btnAll" style="display:none">
+  🔥 HAPUS SEMUA LAPORAN ROMBEL INI
+</button>
+
+<div id="loading" class="loading"></div>
+
+<table id="tabel" style="display:none">
+<thead>
+<tr>
+  <th>No</th>
+  <th>Nama</th>
+  <th>Jam</th>
+  <th>Hapus</th>
+</tr>
+</thead>
+<tbody id="tbody"></tbody>
+</table>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getFirestore, collection, getDocs,
+  query, where, doc, deleteDoc
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+/* FIREBASE */
+const firebaseConfig = {
+  apiKey: "AIzaSyD8SIXXPm_c-TJiaRjHbrishFtU2NICm9M",
+  authDomain: "datasiswa-c10f4.firebaseapp.com",
+  projectId: "datasiswa-c10f4"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+/* ELEMENT */
+const lembagaEl = document.getElementById("lembaga");
+const kelasEl   = document.getElementById("kelas");
+const rombelEl  = document.getElementById("rombel");
+const tanggalEl = document.getElementById("tanggal");
+const tbody     = document.getElementById("tbody");
+const tabel     = document.getElementById("tabel");
+const loading   = document.getElementById("loading");
+const btnAll    = document.getElementById("btnHapusSemua");
+
+/* LOAD LEMBAGA */
+async function loadLembaga(){
+  const snap = await getDocs(collection(db,"lembaga"));
+  let data = [];
+
+  snap.forEach(d=>{
+    data.push({
+      id: d.id,
+      nama: d.data().nama
+    });
+  });
+
+  // 🔤 URUT ABJAD
+  data.sort((a,b)=>a.nama.localeCompare(b.nama));
+
+  data.forEach(d=>{
+    lembagaEl.innerHTML += `<option value="${d.id}">${d.nama}</option>`;
+  });
+}
+
+
+loadLembaga();
+
+/* LOAD KELAS */
+lembagaEl.onchange = async ()=>{
+  kelasEl.innerHTML="<option value=''>Pilih</option>";
+  rombelEl.innerHTML="<option value=''>Pilih</option>";
+  tabel.style.display="none";
+  btnAll.style.display="none";
+
+  if(!lembagaEl.value) return;
+
+  const snap = await getDocs(query(
+    collection(db,"kelas"),
+    where("lembagaId","==",lembagaEl.value)
+  ));
+
+  let data = [];
+  snap.forEach(d=>{
+    data.push({
+      id: d.id,
+      nama: d.data().nama
+    });
+  });
+
+  // 🔢 URUT ANGKA (Kelas 1,2,3...)
+  data.sort((a,b)=>parseInt(a.nama) - parseInt(b.nama));
+
+  data.forEach(d=>{
+    kelasEl.innerHTML+=`<option value="${d.id}">${d.nama}</option>`;
+  });
+};
+
+
+/* LOAD ROMBEL */
+
+kelasEl.onchange = async ()=>{
+  rombelEl.innerHTML="<option value=''>Pilih</option>";
+  tabel.style.display="none";
+  btnAll.style.display="none";
+
+  if(!kelasEl.value) return;
+
+  const snap = await getDocs(query(
+    collection(db,"rombel"),
+    where("kelasId","==",kelasEl.value)
+  ));
+
+  let data = [];
+  snap.forEach(d=>{
+    data.push({
+      id: d.id,
+      nama: d.data().nama
+    });
+  });
+
+  // 🔤 URUT ABJAD
+  data.sort((a,b)=>a.nama.localeCompare(b.nama));
+
+  data.forEach(d=>{
+    rombelEl.innerHTML+=`<option value="${d.id}">${d.nama}</option>`;
+  });
+};
+
+
+
+/* LOAD DATA */
+async function loadData(){
+  tbody.innerHTML="";
+  tabel.style.display="none";
+  btnAll.style.display="none";
+  loading.innerText="";
+
+  if(!rombelEl.value || !tanggalEl.value) return;
+
+  loading.innerText="Memuat laporan...";
+
+  const q = query(
+    collection(db,"lapor_subuh"),
+    where("rombelId","==",rombelEl.value),
+    where("tanggal","==",tanggalEl.value)
+  );
+
+  const snap = await getDocs(q);
+  loading.innerText="";
+
+  if(snap.empty){
+    loading.innerText="Tidak ada laporan";
+    return;
+  }
+
+  let no=1;
+  snap.forEach(d=>{
+    const r=d.data();
+    const tr=document.createElement("tr");
+    tr.innerHTML=`
+      <td>${no++}</td>
+      <td>${r.nama}</td>
+      <td>${r.jam || "-"}</td>
+      <td><button class="btnDel">❌</button></td>
+    `;
+    tr.querySelector(".btnDel").onclick=async()=>{
+      if(!confirm(`Hapus ${r.nama}?`)) return;
+      await deleteDoc(doc(db,"lapor_subuh",d.id));
+      tr.remove();
+    };
+    tbody.appendChild(tr);
+  });
+
+  tabel.style.display="table";
+  btnAll.style.display="block";
+
+  /* HAPUS SEMUA */
+  btnAll.onclick = async ()=>{
+    if(!confirm("⚠️ YAKIN hapus SEMUA laporan rombel ini?")) return;
+    if(!confirm("🚨 Tindakan ini TIDAK BISA DIUNDO. Lanjutkan?")) return;
+
+    loading.innerText="Menghapus semua laporan...";
+    for(const d of snap.docs){
+      await deleteDoc(doc(db,"lapor_subuh",d.id));
+    }
+
+    tbody.innerHTML="";
+    tabel.style.display="none";
+    btnAll.style.display="none";
+    loading.innerText="✅ Semua laporan berhasil dihapus";
+  };
+}
+
+rombelEl.onchange = loadData;
+tanggalEl.onchange = loadData;
+</script>
+
+</body>
+</html>
