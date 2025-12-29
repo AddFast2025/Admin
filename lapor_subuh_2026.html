@@ -86,6 +86,11 @@ hr{margin:20px 0}
   <div id="notice" class="notice"></div>
   <div id="error" class="error"></div>
 
+<label>Foto (opsional)</label>
+<input type="file" id="foto" accept="image/*">
+<img id="previewFoto" style="display:none;margin:12px auto;max-width:90%;border-radius:8px;">
+
+
   <button id="btnKirim">Kirim Laporan</button>
 
 
@@ -337,6 +342,26 @@ siswaEl.onchange=async()=>{
     .join("")+"</ul>";
   totalEl.innerText=total;
 };
+
+/* FOTO: KOMPRES + PREVIEW LOKAL */
+document.getElementById("foto").addEventListener("change", e=>{
+  const file=e.target.files[0]; if(!file) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{
+      const c=document.createElement("canvas");
+      const s=Math.min(1,200/img.width);
+      c.width=img.width*s; c.height=img.height*s;
+      c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+      document.getElementById("previewFoto").src=c.toDataURL("image/jpeg",0.6);
+      document.getElementById("previewFoto").style.display="block";
+    };
+    img.src=ev.target.result;
+  };
+  r.readAsDataURL(file);
+});
+
 
 /* KIRIM */
 btnKirim.onclick=async()=>{
