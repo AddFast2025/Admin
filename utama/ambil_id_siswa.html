@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Rekap ID Siswa</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body { font-family: Arial; background:#f4f6f8; padding:20px; }
+.card { max-width:1000px; margin:auto; background:#fff; padding:20px; border-radius:8px; }
+label { font-weight:bold; display:block; margin-top:12px; }
+select,button { padding:8px; margin-top:5px; width:100%; }
+button { background:#1565c0; color:#fff; border:none; cursor:pointer; margin-top:15px; }
+button.secondary { background:#2e7d32; }
+
+table {
+  width:100%;
+  border-collapse:collapse;
+  margin-top:20px;
+}
+th,td {
+  border:1px solid #ddd;
+  padding:8px;
+  text-align:center;
+}
+th {
+  background:#2e7d32;
+  color:white;
+}
+.loading {
+  margin-top:15px;
+  color:#555;
+}
+</style>
+</head>
+
+<body>
+<div class="card">
+<h2 align="center">Rekap ID Siswa</h2>
+
+<label>Pilih Lembaga</label>
+<select id="lembaga"></select>
+
+<button onclick="loadData()">Tampilkan Data</button>
+<button class="secondary" onclick="downloadExcel()">Download Excel</button>
+
+<div id="info" class="loading"></div>
+
+<table id="tabel" style="display:none">
+<thead>
+<tr>
+  <th>No</th>
+  <th>Kelas / Rombel</th>
+  <th>Nama Siswa</th>
+  <th>ID Siswa</th>
+</tr>
+</thead>
+<tbody id="tbody"></tbody>
+</table>
+
+</div>
+
+<!-- SheetJS -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getFirestore, collection, getDocs, query, where
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+/* FIREBASE */
+const firebaseConfig = {
+  apiKey: "AIzaSyD8SIXXPm_c-TJiaRjHbrishFtU2NICm9M",
+  authDomain: "datasiswa-c10f4.firebaseapp.com",
+  projectId: "datasiswa-c10f4"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+/* ELEMENT */
+const lembagaEl = document.getElementById("lembaga");
+const tbody = document.getElementById("tbody");
+const tabel = document.getElementById("tabel");
+const info = document.getElementById("info");
+
+let dataExcel = [];
+
+/* LOAD LEMBAGA */
+async function loadLembaga() {
+  lembagaEl.innerHTML = "<option value=''>Pilih Lembaga</option>";
+  const snap = await getDocs(collection(db,"lembaga"));
+  snap.forEach(d => {
+    const o = document.createElement("option");
+    o.value = d.id;
+    o.textContent = d.data().nama;
+    lembagaEl.appendChild(o);
+  });
+}
+loadLembaga();
+
+/* LOAD DATA SISWA */
+window.loadData = async () => {
+  tbody.innerHTML = "";
+  tabel.style.display = "none";
+  info.innerText = "Memuat data...";
+  dataExcel = [];
+
+  if (!lembagaEl.value) {
+    info.innerText = "Silakan pilih lembaga";
+    return;
+  }
+
+  // ambil kelas
+  const kelasSnap = await getDocs(
+    query(collection(db,"kelas"), where("lembagaId","==",lembagaEl.value))
+  );
+
+  let no = 1;
+
+  for (const kelasDoc of kelasSnap.docs) {
+    const kelasNama = kelasDoc.data().nama;
+
+    // ambil rombel
+    const rombelSnap = await getDocs(
+      query(collection(db,"rombel"), where("kelasId","==",kelasDoc.id))
+    );
+
+    for (const rombelDoc of rombelSnap.docs) {
+      const rombelNama = rombelDoc.data().nama;
+
+      // ambil siswa
+      const siswaSnap = await getDocs(
+        query(collection(db,"siswa"), where("rombelId","==",rombelDoc.id))
+      );
+
+      siswaSnap.forEach(s => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${no}</td>
+          <td>${kelasNama} / ${rombelNama}</td>
+          <td>${s.data().nama}</td>
+          <td>${s.id}</td>
+        `;
+        tbody.appendChild(tr);
+
+        dataExcel.push({
+          No: no,
+          Kelas_Rombel: `${kelasNama} / ${rombelNama}`,
+          Nama: s.data().nama,
+          ID_Siswa: s.id
+        });
+
+        no++;
+      });
+    }
+  }
+
+  info.innerText = `Total ${no - 1} siswa`;
+  tabel.style.display = "table";
+};
+
+/* DOWNLOAD EXCEL */
+window.downloadExcel = () => {
+  if (dataExcel.length === 0) {
+    alert("Data masih kosong");
+    return;
+  }
+
+  let csv = "No,Kelas/Rombel,Nama Siswa,ID Siswa\n";
+
+  dataExcel.forEach(d => {
+    csv += `"${d.No}","${d.Kelas_Rombel}","${d.Nama}","${d.ID_Siswa}"\n`;
+  });
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "rekap_id_siswa.csv";
+  document.body.appendChild(a);
+  a.click();
+
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+</script>
+</body>
+</html>
