@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Input Pengumuman</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{font-family:Arial;background:#f4f6f8;padding:20px}
+.card{max-width:650px;margin:auto;background:#fff;padding:20px;border-radius:8px}
+label{font-weight:bold;display:block;margin-top:10px}
+select,input,textarea,button{width:100%;padding:8px;margin-top:5px}
+textarea{resize:vertical}
+button{background:#1565c0;color:#fff;border:none;margin-top:15px;cursor:pointer}
+button.secondary{background:#757575}
+
+.preview-box{
+  margin-top:20px;
+  border:1px solid #ddd;
+  padding:15px;
+  border-radius:6px;
+  background:#fafafa;
+  display:none;
+}
+
+button:disabled{
+  background:#9e9e9e;
+  cursor:not-allowed;
+}
+
+.preview-box img{
+  width:100%;
+  max-height:280px;
+  object-fit:contain;
+  margin:10px 0;
+}
+.status{font-size:12px;color:#555;margin-top:5px}
+.error{color:#c62828;margin-top:10px}
+</style>
+</head>
+<body>
+
+<div class="card">
+<h2 align="center">📢 Pengumuman</h2>
+
+<label>Pilih Lembaga</label>
+<select id="lembaga">
+  <option value="">-- Pilih Lembaga --</option>
+</select>
+
+<label>Judul Pengumuman</label>
+<input id="judul" placeholder="Contoh: Libur Akhir Semester">
+
+<label>Upload Foto</label>
+<input type="file" id="foto" accept="image/*">
+<div class="status" id="status"></div>
+
+<label>Isi Pengumuman</label>
+<textarea id="isi" rows="5" placeholder="Isi pengumuman..."></textarea>
+
+<button id="btnPreview">Preview</button>
+<button id="btnSimpan">Simpan</button>
+
+<div class="error" id="error"></div>
+
+<!-- PREVIEW -->
+<div class="preview-box" id="previewBox">
+  <h3 id="pJudul" style="text-align:center;"></h3>
+  <img id="pFoto">
+  <p id="pIsi"></p>
+</div>
+
+</div>
+
+<hr>
+<h3>📋 Daftar Pengumuman</h3>
+
+<table border="1" width="100%" cellpadding="6" style="border-collapse:collapse">
+  
+
+<thead style="background:#e3f2fd">
+  <tr>
+    <th>No</th>
+    <th>Tanggal</th>
+    <th>Lembaga</th>
+    <th>Judul</th>
+    <th>Isi</th>
+    <th>Aksi</th>
+  </tr>
+</thead>
+
+
+
+  <tbody id="tabelPengumuman">
+    <tr><td colspan="4">Memuat...</td></tr>
+  </tbody>
+</table>
+
+
+<script type="module">
+/* ===== FIREBASE ===== */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+
+
+import {
+  getFirestore, collection, addDoc, getDocs,
+  deleteDoc, updateDoc, doc,
+  query, orderBy, getDoc
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+
+
+const firebaseConfig = {
+  apiKey:"AIzaSyD8SIXXPm_c-TJiaRjHbrishFtU2NICm9M",
+  authDomain:"datasiswa-c10f4.firebaseapp.com",
+  projectId:"datasiswa-c10f4"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+/* ===== GAS URL (SAMA) ===== */
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwe6lo9qYfzU8EA4oFesmPQ2rKw0P01MtFK7fenc2UfRm1x_29yS_AAc2PbqRNcMfnTHA/exec";
+
+/* ===== ELEMENT ===== */
+const lembagaEl = document.getElementById("lembaga");
+const judulEl = document.getElementById("judul");
+const isiEl = document.getElementById("isi");
+const fotoEl = document.getElementById("foto");
+const statusEl = document.getElementById("status");
+const errorEl = document.getElementById("error");
+
+const previewBox = document.getElementById("previewBox");
+const pJudul = document.getElementById("pJudul");
+const pFoto = document.getElementById("pFoto");
+const pIsi = document.getElementById("pIsi");
+
+const btnSimpan = document.getElementById("btnSimpan");
+
+
+
+
+
+function getFileId(url){
+  const m = url.match(/id=([^&]+)/);
+  return m ? m[1] : "";
+}
+
+
+let fotoBase64 = "";   // untuk preview lokal
+let fotoUrl = "";     // untuk simpan
+
+
+
+function setLoading(isLoading, mode="simpan"){
+  if(isLoading){
+    btnSimpan.disabled = true;
+    btnSimpan.textContent = mode === "edit"
+      ? "⏳ Sedang update..."
+      : "⏳ Sedang menyimpan...";
+  }else{
+    btnSimpan.disabled = false;
+    btnSimpan.textContent = editId ? "Update" : "Simpan";
+  }
+}
+
+
+
+async function compressToBase64(file, maxWidth = 1000, quality = 0.7){
+  return new Promise((resolve) => {
+    const img = new Image();
+    const reader = new FileReader();
+
+    reader.onload = e => img.src = e.target.result;
+
+    img.onload = () => {
+      let { width, height } = img;
+
+      if (width > maxWidth) {
+        height = height * maxWidth / width;
+        width = maxWidth;
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+
+      const base64 = canvas.toDataURL("image/jpeg", quality);
+      resolve(base64.split(",")[1]); // <-- LANGSUNG BASE64
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
+
+async function deleteDriveFile(url){
+  const fileId = getFileId(url);
+  if(!fileId) return;
+
+  await fetch(GAS_URL,{
+    method:"POST",
+    body: JSON.stringify({
+      action:"delete",
+      fileId
+    })
+  });
+}
+
+let editId = null;
+let fotoLama = "";
+
+async function loadPengumuman(){
+  const tbody = document.getElementById("tabelPengumuman");
+  tbody.innerHTML = "";
+
+  const q = query(
+    collection(db,"pengumuman"),
+    orderBy("dibuat","desc")
+  );
+
+  const snap = await getDocs(q);
+
+  let no = 1;
+
+  snap.forEach(d=>{
+    const x = d.data();
+    const tgl = x.dibuat?.toDate
+      ? x.dibuat.toDate().toLocaleDateString("id-ID")
+      : new Date(x.dibuat).toLocaleDateString("id-ID");
+
+    
+
+tbody.innerHTML += `
+  <tr>
+    <td align="center">${no++}</td>
+    <td align="center">${tgl}</td>
+    <td>${x.lembagaNama || "-"}</td>
+    <td>${x.judul}</td>
+    <td title="${x.isi}" style="max-width:250px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+  ${x.isi}
+</td>
+
+    <td align="center">
+      <button onclick="editPengumuman('${d.id}')">Edit</button>
+     <button 
+  id="del-${d.id}"
+  onclick="hapusPengumuman('${d.id}','${x.foto||""}')">
+  Delete
+</button>
+
+    </td>
+  </tr>
+`;
+
+
+
+
+  });
+
+  if(no === 1){
+    tbody.innerHTML = `<tr><td colspan="4">Belum ada data</td></tr>`;
+  }
+}
+
+
+loadPengumuman();
+
+
+async function editPengumuman(id){
+  const ref = doc(db,"pengumuman",id);
+
+ const snap = await getDoc(doc(db,"pengumuman",id));
+const x = snap.data();
+
+
+  editId = id;
+  fotoLama = x.foto || "";
+
+  judulEl.value = x.judul;
+  isiEl.value = x.isi;
+fotoBase64 = "";
+// set lembaga otomatis saat edit
+lembagaEl.value = x.lembagaId;
+
+  pJudul.textContent = x.judul;
+  pIsi.textContent = x.isi;
+  pFoto.src = x.foto ? driveThumb(x.foto,600) : "";
+
+  previewBox.style.display="block";
+
+  document.getElementById("btnSimpan").textContent="Update";
+}
+
+
+
+
+
+async function hapusPengumuman(id, foto){
+  if(!confirm("Hapus pengumuman ini?")) return;
+
+  const btn = document.getElementById("del-" + id);
+  if(btn){
+    btn.disabled = true;
+    btn.textContent = "⏳ Menghapus...";
+  }
+
+  try{
+    if(foto){
+      await deleteDriveFile(foto);
+    }
+
+    await deleteDoc(doc(db,"pengumuman",id));
+    loadPengumuman();
+
+  }catch(err){
+    console.error(err);
+    alert("Gagal menghapus data");
+
+    if(btn){
+      btn.disabled = false;
+      btn.textContent = "Delete";
+    }
+  }
+}
+
+
+
+
+async function simpan(){
+  errorEl.textContent="";
+  const opt = lembagaEl.selectedOptions[0];
+
+  if(!opt.value){
+    errorEl.textContent="Pilih lembaga";
+    return;
+  }
+
+  // aktifkan loading
+  setLoading(true, editId ? "edit" : "simpan");
+
+  try{
+    // upload foto baru jika ada
+    if(fotoBase64){
+      if(editId && fotoLama){
+        await deleteDriveFile(fotoLama);
+      }
+      fotoUrl = await uploadFotoBase64(fotoBase64);
+    }else{
+      fotoUrl = fotoLama;
+    }
+
+    const data = {
+      lembagaId: opt.value,
+      lembagaNama: opt.dataset.nama,
+      judul: judulEl.value,
+      isi: isiEl.value,
+      foto: fotoUrl
+    };
+
+    if(editId){
+      await updateDoc(doc(db,"pengumuman",editId), data);
+    }else{
+      await addDoc(collection(db,"pengumuman"),{
+        ...data,
+        dibuat: new Date()
+      });
+    }
+
+    alert("Data berhasil disimpan");
+    location.reload();
+
+  }catch(err){
+    console.error(err);
+    errorEl.textContent = "Terjadi kesalahan saat menyimpan";
+
+  }finally{
+    // pastikan tombol kembali normal
+    setLoading(false);
+  }
+}
+
+
+
+function driveThumb(url, size=400){
+  if(!url) return "";
+  if(url.includes("thumbnail")) return url;
+  if(url.includes("uc?id=")){
+    return url.replace(
+      "https://drive.google.com/uc?id=",
+      "https://drive.google.com/thumbnail?id="
+    ) + "&sz=w"+size+"&t="+Date.now();
+  }
+  return url;
+}
+
+
+/* ===== LOAD LEMBAGA ===== */
+async function loadLembaga(){
+  const snap = await getDocs(collection(db,"lembaga"));
+  snap.forEach(d=>{
+    const x=d.data();
+    lembagaEl.innerHTML +=
+      `<option value="${d.id}" data-nama="${x.nama}">${x.nama}</option>`;
+  });
+}
+loadLembaga();
+
+/* ===== UPLOAD FOTO ===== */
+async function uploadFotoBase64(base64){
+  statusEl.textContent="⏳ Upload foto...";
+
+  const res = await fetch(GAS_URL,{
+    method:"POST",
+    body: JSON.stringify({
+      action:"upload",
+      name: "pengumuman_"+Date.now()+".jpg",
+      mime: "image/jpeg",
+      data: base64
+    })
+  });
+
+  const json = await res.json();
+  return json.url;
+}
+
+/* ===== PREVIEW ===== */
+async function preview(){
+  errorEl.textContent="";
+
+  const judul = judulEl.value.trim();
+  const isi = isiEl.value.trim();
+  const file = fotoEl.files[0];
+
+  if(!judul || !isi){
+    errorEl.textContent="Judul & isi wajib diisi";
+    return;
+  }
+
+  if(file){
+    fotoBase64 = await compressToBase64(file);
+    pFoto.src = "data:image/jpeg;base64," + fotoBase64;
+  }else{
+    pFoto.src = "";
+  }
+
+  pJudul.textContent = judul;
+  pIsi.textContent = isi;
+  previewBox.style.display = "block";
+}
+
+
+
+
+document.getElementById("btnPreview").addEventListener("click", preview);
+document.getElementById("btnSimpan").addEventListener("click", simpan);
+
+window.editPengumuman = editPengumuman;
+window.hapusPengumuman = hapusPengumuman;
+
+
+</script>
+
+</body>
+</html>
