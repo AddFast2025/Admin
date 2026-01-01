@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Pengumuman</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{
+  font-family:Arial;
+  background:#f4f6f8;
+  padding:20px;
+}
+.card{
+  max-width:700px;
+  margin:auto;
+  background:#fff;
+  padding:20px;
+  border-radius:8px;
+}
+h2{
+  text-align:center;
+  margin-bottom:10px;
+}
+label{
+  font-weight:bold;
+  display:block;
+  margin-top:10px;
+}
+select{
+  width:100%;
+  padding:8px;
+  margin-top:5px;
+}
+
+.tanggal{
+  font-size:13px;
+  color:#555;
+  text-align:center;
+  margin-top:10px;
+}
+
+.judul{
+  text-align:center;
+  font-size:20px;
+  font-weight:bold;
+  margin:15px 0;
+}
+
+.gambar{
+  text-align:center;
+  margin:15px 0;
+}
+.gambar img{
+  max-width:100%;
+  max-height:300px;
+  object-fit:contain;
+}
+
+.isi{
+  font-size:15px;
+  line-height:1.6;
+  margin-top:10px;
+  white-space:pre-line;
+}
+
+.notice{
+  text-align:center;
+  color:#777;
+  margin-top:20px;
+}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h2>📢 Pengumuman</h2>
+
+  <label>Pilih Lembaga</label>
+  <select id="lembaga">
+    <option value="">-- Pilih Lembaga --</option>
+  </select>
+
+  <div id="konten" style="display:none">
+    <div class="tanggal" id="tgl"></div>
+    <div class="judul" id="judul"></div>
+    <div class="gambar" id="gambar"></div>
+    <div class="isi" id="isi"></div>
+  </div>
+
+  <div class="notice" id="info">
+    Pilih lembaga untuk melihat pengumuman terbaru
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getFirestore, collection, getDocs,
+  query, where, orderBy, limit
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+/* ===== FIREBASE CONFIG (SAMA) ===== */
+const firebaseConfig = {
+  apiKey:"AIzaSyD8SIXXPm_c-TJiaRjHbrishFtU2NICm9M",
+  authDomain:"datasiswa-c10f4.firebaseapp.com",
+  projectId:"datasiswa-c10f4"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+/* ===== ELEMENT ===== */
+const lembagaEl = document.getElementById("lembaga");
+const kontenEl = document.getElementById("konten");
+const infoEl = document.getElementById("info");
+
+const tglEl = document.getElementById("tgl");
+const judulEl = document.getElementById("judul");
+const isiEl = document.getElementById("isi");
+const gambarEl = document.getElementById("gambar");
+
+/* ===== HELPER THUMBNAIL ===== */
+function driveThumb(url, size=600){
+  if(!url) return "";
+  if(url.includes("thumbnail")) return url;
+  if(url.includes("uc?id=")){
+    return url.replace(
+      "https://drive.google.com/uc?id=",
+      "https://drive.google.com/thumbnail?id="
+    ) + "&sz=w"+size;
+  }
+  return url;
+}
+
+/* ===== LOAD LEMBAGA ===== */
+async function loadLembaga(){
+  const snap = await getDocs(collection(db,"lembaga"));
+  snap.forEach(d=>{
+    const x = d.data();
+    lembagaEl.innerHTML +=
+      `<option value="${d.id}">${x.nama}</option>`;
+  });
+}
+loadLembaga();
+
+/* ===== LOAD PENGUMUMAN TERBARU ===== */
+async function loadPengumuman(lembagaId){
+  infoEl.textContent = "Memuat pengumuman...";
+  kontenEl.style.display = "none";
+
+  const q = query(
+    collection(db,"pengumuman"),
+    where("lembagaId","==",lembagaId)
+  );
+
+  const snap = await getDocs(q);
+
+  if(snap.empty){
+    infoEl.textContent = "Belum ada pengumuman";
+    return;
+  }
+
+  // urutkan manual berdasarkan dibuat (terbaru)
+  const data = snap.docs
+    .map(d => d.data())
+    .sort((a,b)=>{
+      const ta = a.dibuat?.toDate ? a.dibuat.toDate() : new Date(a.dibuat);
+      const tb = b.dibuat?.toDate ? b.dibuat.toDate() : new Date(b.dibuat);
+      return tb - ta;
+    })[0];
+
+  const tgl = data.dibuat?.toDate
+    ? data.dibuat.toDate().toLocaleDateString("id-ID")
+    : new Date(data.dibuat).toLocaleDateString("id-ID");
+
+  tglEl.textContent = "Tanggal: " + tgl;
+  judulEl.textContent = data.judul;
+  isiEl.textContent = data.isi;
+
+  if(data.foto){
+    gambarEl.innerHTML = `<img src="${driveThumb(data.foto)}">`;
+    gambarEl.style.marginBottom = "15px";
+  }else{
+    gambarEl.innerHTML = "";
+    gambarEl.style.marginBottom = "0";
+  }
+
+  kontenEl.style.display = "block";
+  infoEl.textContent = "";
+}
+
+/* ===== EVENT ===== */
+lembagaEl.addEventListener("change",()=>{
+  if(lembagaEl.value){
+    loadPengumuman(lembagaEl.value);
+  }else{
+    kontenEl.style.display = "none";
+    infoEl.textContent = "Pilih lembaga untuk melihat pengumuman terbaru";
+  }
+});
+</script>
+
+</body>
+</html>
