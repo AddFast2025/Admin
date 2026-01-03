@@ -95,7 +95,6 @@ bulanEl.value =
   now.getFullYear() + "-" +
   String(now.getMonth() + 1).padStart(2, "0");
 
-const bulan = bulanEl.value;
 
 const lembagaEl = document.getElementById("lembaga");
 const kelasEl   = document.getElementById("kelas");
@@ -131,8 +130,12 @@ window.loadData = async ()=>{
   rankBody.innerHTML="";
   dataPDF = [];
 
-  
-  if(!bulan || !rombelEl.value) return alert("Lengkapi filter");
+  const bulan = document.getElementById("bulan").value;
+
+  if(!bulan || !rombelEl.value){
+    alert("Lengkapi filter");
+    return;
+  }
 
   const siswaSnap = await getDocs(query(
     collection(db,"siswa"),
@@ -152,7 +155,7 @@ window.loadData = async ()=>{
 
   laporSnap.forEach(d=>{
     const r=d.data();
-    if(map[r.siswaId]) map[r.siswaId].nilai+=r.nilai;
+    if(map[r.siswaId]) map[r.siswaId].nilai += r.nilai;
   });
 
   const arr = Object.values(map).sort((a,b)=>b.nilai-a.nilai);
