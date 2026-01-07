@@ -71,6 +71,7 @@ h1{
   <button class="btn-kuning" onclick="tampilMenu('utama')">Utama</button>
   <button class="btn-kuning" onclick="tampilMenu('subuh')">Subuh</button>
   <button class="btn-kuning" onclick="tampilMenu('hafalan')">Hafalan</button>
+    <button class="btn-kuning" onclick="tampilMenu('jamaah')">Jamaah</button>
   <button class="btn-kuning" onclick="tampilMenu('absen')">Absen</button>
 <button class="btn-kuning" onclick="tampilMenu('keg_lain')">Kegiatan</button>
 <button class="btn-kuning" onclick="tampilMenu('portal')">Portal</button>
@@ -140,7 +141,11 @@ portal:[
     ],
 
 
-
+ jamaah:[
+      "Tambah Hapus Jamaah",
+      "Rekap Harian Jamaah",
+      "Rekap Bulanan Jamaah"
+    ]
     
     absen:[
       "Tambah Hapus Absen",
@@ -210,12 +215,26 @@ else if(menu==="subuh" && teks==="Filter Nilai"){
         window.location.href = "utama/riwayat_nilai_siswa.html";
       }
 
+
+
+   
    
 
-    
+     else if(menu==="jamaah" && teks==="Rekap Harian Jamaah"){
+        window.location.href = "https://addfast2025.github.io/SDNSB2/absen_pagi/rekap_harian_absen_pagi.html";
+      }
+      else if(menu==="jamaah" && teks==="Rekap Bulanan Jamaah"){
+        window.location.href = "https://addfast2025.github.io/SDNSB2/absen_pagi/rekap_bln_nilai.html";
+      }
+           else if(menu==="jamaah" && teks==="Tambah Hapus Jamaah"){
+        window.location.href = "https://addfast2025.github.io/SDNSB2/absen_pagi/kelola_hps_tambah.html";
+      }
 
 
-  
+
+
+
+             
 
         
       else if(menu==="absen" && teks==="Rekap Harian"){
