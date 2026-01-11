@@ -75,6 +75,7 @@ h1{
   <button class="btn-kuning" onclick="tampilMenu('absen')">Absen</button>
 <button class="btn-kuning" onclick="tampilMenu('keg_lain')">Kegiatan</button>
 <button class="btn-kuning" onclick="tampilMenu('portal')">Portal</button>
+<button class="btn-kuning" onclick="tampilMenu('nilai')">Nilai</button>
 
 
 </div>
@@ -129,6 +130,12 @@ portal:[
  
     ],
 
+nilai:[
+
+"Penegak",
+"Agregat"
+ 
+    ],
 
 
 
@@ -218,6 +225,15 @@ else if(menu==="subuh" && teks==="Filter Nilai"){
 
    
    
+
+      else if(menu==="nilai" && teks==="Agregat"){
+        window.location.href = "https://addfast2025.github.io/Admin/nilai/agregat_bulan.html";
+      }
+           else if(menu==="nilai" && teks==="Penegak"){
+        window.location.href = "https://addfast2025.github.io/Admin/nilai/penegak_disiplin.html";
+      }
+
+
 
 
    
