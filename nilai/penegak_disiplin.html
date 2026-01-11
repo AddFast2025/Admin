@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Peringkat 1–2–3 Per Kelas & Rombel</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{
+  font-family:Arial;
+  background:#f4f6f8;
+  padding:20px;
+}
+.card{
+  max-width:1100px;
+  margin:auto;
+  background:#fff;
+  padding:20px;
+  border-radius:10px;
+}
+h2{text-align:center}
+label{font-weight:bold;display:block;margin-top:10px}
+select,input,button{width:100%;padding:8px;margin-top:5px}
+button{background:#2e7d32;color:#fff;border:none;margin-top:15px;cursor:pointer}
+
+#btnPdf{
+  background:#0d47a1;
+}
+
+.loading{
+  text-align:center;
+  margin:15px 0;
+  font-weight:bold;
+}
+
+.rombel-box{
+  margin-top:25px;
+  border:1px solid #ddd;
+  border-radius:8px;
+  overflow:hidden;
+}
+.rombel-title{
+  background:#1565c0;
+  color:white;
+  padding:10px;
+  font-weight:bold;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+th,td{
+  border:1px solid #eee;
+  padding:8px;
+}
+th{background:#f1f5f9}
+td:nth-child(1){
+  width:40px;
+  text-align:center;
+}
+td:nth-child(3){
+  width:80px;
+  text-align:center;
+  font-weight:bold;
+}
+
+/* Header PDF */
+.pdf-header{
+  text-align:center;
+  margin-bottom:15px;
+  display:none;
+}
+.pdf-header h3{
+  margin:0;
+}
+.pdf-info{
+  font-size:13px;
+  margin-top:5px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card" id="areaPdf">
+
+<!-- HEADER PDF -->
+<div class="pdf-header" id="pdfHeader">
+  <h3>🏆 Peringkat 1–2–3 Siswa</h3>
+  <div class="pdf-info" id="pdfInfo"></div>
+</div>
+
+<h2>🏆 Peringkat 1–2–3 Per Kelas & Rombel</h2>
+
+<label>Bulan</label>
+<input type="month" id="bulan">
+
+<label>Lembaga</label>
+<select id="lembaga"></select>
+
+<button id="btn">Tampilkan</button>
+<button id="btnPdf" style="display:none">⬇️ Download PDF</button>
+
+<div id="loading" class="loading"></div>
+<div id="hasil"></div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { 
+  getFirestore, collection, getDocs, query, where 
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+/* ================= FIREBASE ================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyD8SIXXPm_c-TJiaRjHbrishFtU2NICm9M",
+  authDomain: "datasiswa-c10f4.firebaseapp.com",
+  projectId: "datasiswa-c10f4"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+/* ================= ELEMENT ================= */
+const bulanEl   = document.getElementById("bulan");
+const lembagaEl = document.getElementById("lembaga");
+const loading   = document.getElementById("loading");
+const hasilEl   = document.getElementById("hasil");
+const btnPdf    = document.getElementById("btnPdf");
+const areaPdf   = document.getElementById("areaPdf");
+const pdfHeader = document.getElementById("pdfHeader");
+const pdfInfo   = document.getElementById("pdfInfo");
+
+/* ================= DEFAULT BULAN ================= */
+const now = new Date();
+bulanEl.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+
+/* ================= LOAD LEMBAGA ================= */
+async function loadLembaga(){
+  const snap = await getDocs(collection(db,"lembaga"));
+  lembagaEl.innerHTML = `<option value="">Pilih Lembaga</option>`;
+  snap.forEach(d=>{
+    lembagaEl.innerHTML += `<option value="${d.id}">${d.data().nama}</option>`;
+  });
+}
+loadLembaga();
+
+/* ================= SORT KELAS + ROMBEL ================= */
+function sortRombel(a,b){
+  const ka = (kelasMap[a.kelasId] || "").match(/\d+/);
+  const kb = (kelasMap[b.kelasId] || "").match(/\d+/);
+
+  const na = parseInt(ka ? ka[0] : 0);
+  const nb = parseInt(kb ? kb[0] : 0);
+
+  const ra = (a.nama || "").toUpperCase();
+  const rb = (b.nama || "").toUpperCase();
+
+  if(na !== nb) return na - nb;
+  return ra.localeCompare(rb);
+}
+
+/* ================= BUTTON ================= */
+document.getElementById("btn").onclick = async ()=>{
+
+  hasilEl.innerHTML = "";
+  btnPdf.style.display = "none";
+
+  if(!bulanEl.value || !lembagaEl.value){
+    loading.textContent = "⚠️ Pilih bulan dan lembaga";
+    return;
+  }
+
+  loading.textContent = "⏳ Memuat peringkat...";
+
+  const [y,m] = bulanEl.value.split("-");
+  const startDate = new Date(`${y}-${m}-01`);
+  const endDate   = new Date(`${y}-${m}-31`);
+
+  /* ===== Ambil kelas ===== */
+  const kelasSnap = await getDocs(query(
+    collection(db,"kelas"),
+    where("lembagaId","==",lembagaEl.value)
+  ));
+
+  window.kelasMap = {};
+  kelasSnap.forEach(d=>{
+    kelasMap[d.id] = d.data().nama;
+  });
+
+  /* ===== Ambil rombel ===== */
+  const rombelSnap = await getDocs(collection(db,"rombel"));
+  const rombelList = [];
+
+  rombelSnap.forEach(d=>{
+    const r = d.data();
+    if(kelasMap[r.kelasId]){
+      rombelList.push({
+        id: d.id,
+        nama: r.nama,
+        kelasId: r.kelasId
+      });
+    }
+  });
+
+  rombelList.sort(sortRombel);
+
+  /* ===== Ambil siswa ===== */
+  const siswaSnap = await getDocs(collection(db,"siswa"));
+  const siswaMap = {};
+
+  siswaSnap.forEach(d=>{
+    const s = d.data();
+    if(!kelasMap[s.kelasId]) return;
+
+    if(!siswaMap[s.rombelId]) siswaMap[s.rombelId] = {};
+    siswaMap[s.rombelId][d.id] = {
+      nama: s.nama,
+      total: 0
+    };
+  });
+
+  /* ===== Loader nilai ===== */
+  async function loadNilai(colName){
+    const snap = await getDocs(query(
+      collection(db,colName),
+      where("lembagaId","==",lembagaEl.value)
+    ));
+
+    snap.forEach(d=>{
+      const r = d.data();
+      if(!r.dibuat) return;
+
+      const tgl = r.dibuat.toDate();
+      if(tgl < startDate || tgl > endDate) return;
+
+      if(
+        siswaMap[r.rombelId] &&
+        siswaMap[r.rombelId][r.siswaId]
+      ){
+        siswaMap[r.rombelId][r.siswaId].total += r.nilai;
+      }
+    });
+  }
+
+  await Promise.all([
+    loadNilai("absen_jamaah_subuh"),
+    loadNilai("lapor_subuh"),
+    loadNilai("absen_pagi"),
+  ]);
+
+  /* ===== Render ===== */
+  let totalRombel = 0;
+
+  rombelList.forEach(r=>{
+    const listObj = siswaMap[r.id];
+    if(!listObj) return;
+
+    const list = Object.values(listObj)
+      .sort((a,b)=>b.total - a.total)
+      .slice(0,3);
+
+    if(!list.length) return;
+
+    totalRombel++;
+
+    const namaKelas = kelasMap[r.kelasId] || "";
+    const label = `${namaKelas}${r.nama}`;
+
+    let rows = "";
+    let no = 1;
+    list.forEach(s=>{
+      rows += `
+        <tr>
+          <td>${no++}</td>
+          <td>${s.nama}</td>
+          <td>${s.total}</td>
+        </tr>
+      `;
+    });
+
+    hasilEl.innerHTML += `
+      <div class="rombel-box">
+        <div class="rombel-title">🏫 ${label}</div>
+        <table>
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>Nama Siswa</th>
+              <th>Nilai</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+  });
+
+  loading.textContent = totalRombel
+    ? "✅ Peringkat berhasil dimuat"
+    : "⚠️ Tidak ada data";
+
+  btnPdf.style.display = totalRombel ? "block" : "none";
+
+  /* ===== INFO PDF ===== */
+  const lembagaText = lembagaEl.options[lembagaEl.selectedIndex].text;
+  pdfInfo.innerHTML = `Bulan: <b>${bulanEl.value}</b> | Lembaga: <b>${lembagaText}</b>`;
+};
+
+/* ================= PDF DOWNLOAD ================= */
+btnPdf.onclick = () => {
+
+  pdfHeader.style.display = "block";
+
+  const lembagaText = lembagaEl.options[lembagaEl.selectedIndex].text;
+
+  const filename = `Peringkat_${bulanEl.value}_${lembagaText}.pdf`
+                    .replace(/\s+/g,"_");
+
+  const opt = {
+    margin: 8,
+    filename: filename,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS:true },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  };
+
+  html2pdf().set(opt).from(areaPdf).save()
+    .then(()=>{
+      pdfHeader.style.display = "none";
+    });
+};
+</script>
+
+<!-- PDF LIBRARY -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+</body>
+</html>
