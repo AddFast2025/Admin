@@ -95,12 +95,34 @@ hr{margin:20px 0}
 
 
 
+<div id="panelRiwayat" style="display:none">
   <hr>
   <h3>Riwayat Siswa</h3>
   <div id="history">Pilih siswa</div>
 
   <h3>Total Nilai</h3>
   <div id="total">0</div>
+</div>
+
+<hr>
+
+<h3>🏆 10 Siswa Paling Awal Lapor Subuh Hari Ini</h3>
+
+<table id="topTable" style="width:100%;border-collapse:collapse">
+  <thead>
+    <tr style="background:#1565c0;color:white">
+      <th style="padding:6px">No</th>
+      <th style="padding:6px">Nama Siswa</th>
+      <th style="padding:6px">Pukul</th>
+     
+    </tr>
+  </thead>
+  <tbody id="topBody">
+    <tr><td colspan="4" style="text-align:center;padding:8px">Memuat...</td></tr>
+  </tbody>
+</table>
+
+
 </div>
 
 <script type="module">
@@ -139,6 +161,58 @@ const errorEl=document.getElementById("error");
 const historyEl=document.getElementById("history");
 const totalEl=document.getElementById("total");
 const btnKirim=document.getElementById("btnKirim");
+const panelRiwayat = document.getElementById("panelRiwayat");
+const topBody = document.getElementById("topBody");
+
+/* ==========================
+   TOP 5 TERCEPAT HARI INI
+========================== */
+
+async function loadTop5() {
+  const today = tanggalEl.value; // YYYY-MM-DD
+
+  const snap = await getDocs(
+    query(
+      collection(db, "lapor_subuh"),
+      where("tanggal", "==", today)
+    )
+  );
+
+  let data = [];
+  snap.forEach(d => data.push(d.data()));
+
+  if(!data.length){
+    topBody.innerHTML =
+      `<tr>
+        <td colspan="3" style="text-align:center;padding:8px">
+          Belum ada laporan hari ini
+        </td>
+      </tr>`;
+    return;
+  }
+
+  // Urutkan dari jam paling awal
+  data.sort((a,b) => a.jam.localeCompare(b.jam));
+
+  // Ambil 5 teratas
+  data = data.slice(0,10);
+
+  // Render tabel
+  topBody.innerHTML = data.map((r,i)=>`
+    <tr>
+      <td style="padding:6px;text-align:center">${i+1}</td>
+      <td style="padding:6px;line-height:1.2">
+        <div style="font-weight:bold">${r.nama}</div>
+        <div style="font-size:12px;color:#555">
+           KELAS ${r.kelasNama || ""}${r.rombelNama || ""} ${r.lembagaNama || ""}
+        </div>
+      </td>
+      <td style="padding:6px;text-align:center">${r.jam}</td>
+    </tr>
+  `).join("");
+}
+
+
 
 
 const logoHeader = document.getElementById("logoHeader");
@@ -185,6 +259,8 @@ let timer=null;
 function startCooldown(sec){
   localStorage.setItem(COOLDOWN_KEY,Date.now()+sec*1000);
   runCooldown();
+loadTop5();
+
 }
 
 function runCooldown(){
@@ -254,7 +330,10 @@ window.addEventListener("load",()=>{
     lembagaEl.dispatchEvent(new Event("change"));
 loadLogo(id);
   }
-  runCooldown();
+
+runCooldown();
+  loadTop5();   // ✅ panggil ranking
+
 });
 
 /* GANTI LEMBAGA */
@@ -314,14 +393,27 @@ rombelEl.onchange=async()=>{
 };
 
 /* HISTORY */
-siswaEl.onchange=async()=>{
+siswaEl.onchange = async () => {
+  if(!siswaEl.value){
+    panelRiwayat.style.display = "none";
+    return;
+  }
+
+  panelRiwayat.style.display = "block";   // ✅ tampilkan
   historyEl.innerHTML="Memuat...";
   totalEl.innerText="0";
 
-  const snap=await getDocs(
-    query(collection(db,"lapor_subuh"),
-      where("siswaId","==",siswaEl.value))
-  );
+
+ const bulanIni = tanggalEl.value.slice(0,7); // contoh: 2026-01
+
+const snap = await getDocs(
+  query(
+    collection(db,"lapor_subuh"),
+    where("siswaId","==",siswaEl.value),
+    where("bulan","==",bulanIni)   // ✅ filter hanya bulan ini
+  )
+);
+
 
   let total=0,data=[];
   snap.forEach(d=>{
@@ -405,6 +497,7 @@ btnKirim.onclick=async()=>{
 
     await siswaEl.onchange();
     alert("✅ Laporan berhasil");
+loadTop5();   
     startCooldown(200); // ← cooldown kembali
   } finally {
     if(!localStorage.getItem(COOLDOWN_KEY)){
@@ -412,7 +505,11 @@ btnKirim.onclick=async()=>{
       btnKirim.innerText="Kirim Laporan";
     }
   }
+
 };
+
+
+
 </script>
 </body>
 </html>
