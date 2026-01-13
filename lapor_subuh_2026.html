@@ -106,6 +106,38 @@ hr{margin:20px 0}
 
 <hr>
 
+
+<div style="display:flex;justify-content:space-between;align-items:center">
+  <h3 style="margin:0">🏆 Ranking Kelas Hari Ini</h3>
+  <button id="btnToggleKelas"
+    style="width:auto;padding:6px 12px;background:#1565c0">
+    Selengkapnya
+  </button>
+</div>
+
+
+<table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+  <thead>
+    <tr style="background:#2e7d32;color:white">
+      <th style="padding:6px">No</th>
+      <th style="padding:6px">Kelas – Lembaga</th>
+<th style="padding:6px">Hadir</th>
+      <th style="padding:6px">%</th>
+    </tr>
+  </thead>
+  <tbody id="topKelasBody">
+    <tr>
+      <td colspan="3" style="text-align:center;padding:8px">
+        Memuat...
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+
+
+
+
 <h3>🏆 10 Siswa Paling Awal Lapor Subuh Hari Ini</h3>
 
 <table id="topTable" style="width:100%;border-collapse:collapse">
@@ -163,6 +195,14 @@ const totalEl=document.getElementById("total");
 const btnKirim=document.getElementById("btnKirim");
 const panelRiwayat = document.getElementById("panelRiwayat");
 const topBody = document.getElementById("topBody");
+const topKelasBody = document.getElementById("topKelasBody");
+const btnToggleKelas = document.getElementById("btnToggleKelas");
+let tampilSemuaKelas = false;
+let cacheRankingKelas = [];
+
+
+
+
 
 /* ==========================
    TOP 5 TERCEPAT HARI INI
@@ -210,6 +250,109 @@ async function loadTop5() {
       <td style="padding:6px;text-align:center">${r.jam}</td>
     </tr>
   `).join("");
+}
+
+async function loadTopKelas(){
+  const today = tanggalEl.value;
+
+  topKelasBody.innerHTML =
+    `<tr><td colspan="4" style="text-align:center">Memuat...</td></tr>`;
+
+  /* ambil semua siswa */
+  const siswaSnap = await getDocs(collection(db,"siswa"));
+  const totalPerRombel = {};
+
+  siswaSnap.forEach(d=>{
+    const r = d.data().rombelId;
+    totalPerRombel[r] = (totalPerRombel[r]||0)+1;
+  });
+
+  /* ambil lapor hari ini */
+  const laporSnap = await getDocs(
+    query(collection(db,"lapor_subuh"),
+      where("tanggal","==",today)
+    )
+  );
+
+  const hadirPerRombel = {};
+  const infoRombel = {};
+
+  laporSnap.forEach(d=>{
+    const r = d.data();
+
+    if(!hadirPerRombel[r.rombelId]){
+      hadirPerRombel[r.rombelId] = new Set();
+    }
+    hadirPerRombel[r.rombelId].add(r.siswaId);
+
+    infoRombel[r.rombelId] = {
+      kelas: r.kelasNama || "",
+      rombel: r.rombelNama || "",
+      lembaga: r.lembagaNama || ""
+    };
+  });
+
+  /* hitung hasil */
+  const hasil = [];
+
+  for(const rombelId in totalPerRombel){
+    const total = totalPerRombel[rombelId];
+    const hadir = hadirPerRombel[rombelId]?.size || 0;
+    const persen = total ? ((hadir/total)*100) : 0;
+
+    const info = infoRombel[rombelId];
+    if(!info) continue;
+
+    hasil.push({
+      nama: `${info.kelas}${info.rombel} – ${info.lembaga}`,
+      hadir,
+      total,
+      persen: Number(persen.toFixed(1))
+    });
+  }
+
+  if(!hasil.length){
+    cacheRankingKelas = [];
+    topKelasBody.innerHTML =
+      `<tr><td colspan="4" style="text-align:center">
+        Belum ada data hari ini
+      </td></tr>`;
+    return;
+  }
+
+  hasil.sort((a,b)=>b.persen-a.persen);
+  cacheRankingKelas = hasil;
+
+  renderRankingKelas();
+}
+
+
+function renderRankingKelas(){
+  const data = tampilSemuaKelas
+    ? cacheRankingKelas
+    : cacheRankingKelas.slice(0,5);
+
+  if(!data.length){
+    topKelasBody.innerHTML =
+      `<tr><td colspan="4" style="text-align:center">
+        Belum ada data
+      </td></tr>`;
+    return;
+  }
+
+  topKelasBody.innerHTML = data.map((r,i)=>`
+    <tr>
+      <td style="text-align:center">${i+1}</td>
+      <td>${r.nama}</td>
+      <td style="text-align:center">${r.hadir}/${r.total}</td>
+      <td style="text-align:center;font-weight:bold">
+        ${r.persen}%
+      </td>
+    </tr>
+  `).join("");
+
+  btnToggleKelas.innerText =
+    tampilSemuaKelas ? "Ringkas" : "Selengkapnya";
 }
 
 
@@ -260,6 +403,7 @@ function startCooldown(sec){
   localStorage.setItem(COOLDOWN_KEY,Date.now()+sec*1000);
   runCooldown();
 loadTop5();
+loadTopKelas(); 
 
 }
 
@@ -333,6 +477,7 @@ loadLogo(id);
 
 runCooldown();
   loadTop5();   // ✅ panggil ranking
+loadTopKelas(); 
 
 });
 
@@ -506,6 +651,11 @@ loadTop5();
     }
   }
 
+};
+
+btnToggleKelas.onclick = ()=>{
+  tampilSemuaKelas = !tampilSemuaKelas;
+  renderRankingKelas();
 };
 
 
