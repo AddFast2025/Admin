@@ -59,6 +59,36 @@ th{
   body{background:#fff;padding:0}
   .card{border-radius:0}
 }
+
+
+
+/* ===== ATUR LEBAR KOLOM TABEL ===== */
+
+/* Kolom No */
+table th:nth-child(1),
+table td:nth-child(1){
+  width: 35px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Kolom Persentase (%) */
+table th:nth-child(3),
+table td:nth-child(3){
+  width: 45px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Kolom Nama (biar fleksibel & lebar) */
+table th:nth-child(2),
+text-align: center;
+table td:nth-child(2){
+  width: auto;
+  text-align: left;
+}
+
+
 </style>
 </head>
 
@@ -99,7 +129,7 @@ th{
     <thead>
       <tr>
         <th>No</th>
-        <th>Kelas – Lembaga</th>
+        <th>Kelas Lembaga</th>
         <th>%</th>
       </tr>
     </thead>
@@ -152,7 +182,7 @@ async function loadTop(){
   topBody.innerHTML=data.map((r,i)=>`
     <tr>
       <td class="center">${i+1}</td>
-      <td>${r.nama}<br><small>${r.kelasNama}${r.rombelNama} – ${r.lembagaNama}</small></td>
+      <td>${r.nama}<br><small>${r.kelasNama}${r.rombelNama} ${r.lembagaNama}</small></td>
       <td class="center">${r.jam}</td>
     </tr>
   `).join("");
@@ -176,7 +206,7 @@ async function loadKelas(){
     const r=d.data();
     hadir[r.rombelId]=hadir[r.rombelId]||new Set();
     hadir[r.rombelId].add(r.siswaId);
-    info[r.rombelId]={nama:`${r.kelasNama}${r.rombelNama} – ${r.lembagaNama}`};
+    info[r.rombelId]={nama:`${r.kelasNama}${r.rombelNama} ${r.lembagaNama}`};
   });
 
   const hasil=[];
@@ -212,7 +242,7 @@ loadKelas();
 <script>
 function downloadPDF(){
   html2pdf().set({
-    margin: [10, 10, 10, 10], // atas, kanan, bawah, kiri (mm)
+    margin: 5, // atas, kanan, bawah, kiri (mm)
     filename: `Lapor-Subuh-${tanggal.value}.pdf`,
     html2canvas: { scale: 2 },
     jsPDF: {
