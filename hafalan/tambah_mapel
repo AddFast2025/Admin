@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Master Mapel</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body { font-family: Arial; background:#f4f6f8; padding:20px; }
+.card { max-width:550px; margin:auto; background:#fff; padding:20px; border-radius:8px; }
+label { font-weight:bold; display:block; margin-top:10px; }
+input,button { width:100%; padding:8px; margin-top:5px; }
+button { background:#2e7d32; color:white; border:none; margin-top:15px; cursor:pointer; }
+ul { padding-left:18px; margin-top:10px; }
+.error { color:red; margin-top:10px; }
+
+table { width:100%; border-collapse:collapse; margin-top:10px; }
+th,td { border:1px solid #ddd; padding:6px; text-align:center; }
+th { background:#e8f5e9; }
+
+.hapus {
+  background:#c62828;
+  color:white;
+  border:none;
+  padding:4px 8px;
+  border-radius:4px;
+  cursor:pointer;
+}
+</style>
+</head>
+<body>
+
+<div class="card">
+<h2 align="center">Master Mapel</h2>
+
+<label>Kode Mapel</label>
+<input id="kode" placeholder="Contoh: QURAN">
+
+<label>Nama Mapel</label>
+<input id="nama" placeholder="Contoh: Al-Qur'an">
+
+<label>Urutan</label>
+<input id="urutan" type="number" placeholder="Contoh: 1">
+
+<button onclick="simpan()">Simpan</button>
+
+<div id="error" class="error"></div>
+
+<hr>
+<h3>Daftar Mapel</h3>
+<div id="list">Memuat...</div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { 
+  getFirestore, collection, addDoc, getDocs,
+  query, where, orderBy, deleteDoc, doc
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD8SIXXPm_c-TJiaRjHbrishFtU2NICm9M",
+  authDomain: "datasiswa-c10f4.firebaseapp.com",
+  projectId: "datasiswa-c10f4"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const listEl = document.getElementById("list");
+
+async function load() {
+  const snap = await getDocs(
+    query(collection(db,"mapel"), orderBy("urutan"))
+  );
+
+  let html = `
+  <table>
+    <tr>
+      <th>No</th>
+      <th>Kode</th>
+      <th>Nama Mapel</th>
+      <th>Urutan</th>
+      <th>Aksi</th>
+    </tr>
+  `;
+
+  let no = 1;
+  snap.forEach(d => {
+    const r = d.data();
+    html += `
+      <tr>
+        <td>${no++}</td>
+        <td>${r.kode}</td>
+        <td>${r.nama}</td>
+        <td>${r.urutan}</td>
+        <td>
+          <button class="hapus" onclick="hapus('${d.id}','${r.nama}')">❌</button>
+        </td>
+      </tr>
+    `;
+  });
+
+  html += "</table>";
+  listEl.innerHTML = html;
+}
+load();
+
+window.simpan = async () => {
+  const kode = document.getElementById("kode").value.trim().toUpperCase();
+  const nama = document.getElementById("nama").value.trim();
+  const urutan = Number(document.getElementById("urutan").value);
+  const error = document.getElementById("error");
+
+  error.innerText = "";
+
+  if (!kode || !nama || !urutan) {
+    error.innerText = "Semua isian wajib diisi";
+    return;
+  }
+
+  const cek = await getDocs(
+    query(collection(db,"mapel"), where("kode","==",kode))
+  );
+
+  if (!cek.empty) {
+    error.innerText = "Kode mapel sudah ada";
+    return;
+  }
+
+  await addDoc(collection(db,"mapel"), {
+    kode,
+    nama,
+    urutan,
+    aktif: true,
+    dibuat: new Date()
+  });
+
+  document.getElementById("kode").value = "";
+  document.getElementById("nama").value = "";
+  document.getElementById("urutan").value = "";
+  load();
+};
+
+window.hapus = async (id, nama) => {
+  if (!confirm(`Yakin ingin menghapus mapel "${nama}" ?`)) return;
+  await deleteDoc(doc(db,"mapel",id));
+  load();
+};
+</script>
+
+</body>
+</html>
