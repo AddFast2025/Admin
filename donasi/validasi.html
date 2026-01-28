@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Validasi Donasi</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{
+  font-family:Arial, sans-serif;
+  background:#f4f6f8;
+  padding:20px;
+}
+.card{
+  max-width:900px;
+  margin:auto;
+  background:#fff;
+  padding:20px;
+  border-radius:12px;
+  box-shadow:0 2px 10px rgba(0,0,0,.15);
+}
+h2{text-align:center;margin-bottom:15px}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:14px;
+}
+th,td{
+  border:1px solid #000;
+  padding:10px;
+  vertical-align:top;
+}
+th{
+  background:#f5f5f5;
+  text-align:center;
+}
+
+.donasi-box{
+  line-height:1.6;
+}
+
+.donasi-tanggal{
+  font-size:13px;
+  color:#444;
+}
+
+.donasi-status{
+  font-weight:bold;
+  margin-top:4px;
+}
+
+.donasi-nama{
+  margin-top:4px;
+}
+
+.donasi-nominal{
+  margin-top:6px;
+  font-weight:bold;
+}
+
+.donasi-link{
+  display:inline-block;
+  margin-top:6px;
+  color:#1565c0;
+  text-decoration:none;
+  font-weight:bold;
+}
+
+.aksi-btn{
+  width:100%;
+  padding:5px 0;
+  margin-bottom:8px;
+  border:none;
+  border-radius:4px;
+  cursor:pointer;
+  font-size:12px;
+}
+
+.valid{
+  background:#2e7d32;
+  color:#fff;
+}
+
+.tolak{
+  background:#c62828;
+  color:#fff;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+<h2>🔐 Validasi Donasi</h2>
+
+<table>
+<thead>
+<tr>
+  <th width="20">No</th>
+  <th>Donasi</th>
+<th width="70">Aksi</th>
+</tr>
+</thead>
+<tbody id="list">
+<tr>
+  <td colspan="4" style="text-align:center;color:#777">
+    Memuat data...
+  </td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+  updateDoc,
+  doc,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+/* ================= CONFIG ================= */
+const app = initializeApp({
+  apiKey:"AIzaSyD8SIXXPm_c-TJiaRjHbrishFtU2NICm9M",
+  authDomain:"datasiswa-c10f4.firebaseapp.com",
+  projectId:"datasiswa-c10f4"
+});
+const db = getFirestore(app);
+
+/* ================= HELPER ================= */
+function formatTanggalJam(ts){
+  if(!ts) return "-";
+  const d = ts.toDate();
+  const tgl = d.toLocaleDateString("id-ID",{
+    day:"2-digit",month:"short",year:"numeric"
+  });
+  const jam = d.toLocaleTimeString("id-ID",{
+    hour:"2-digit",minute:"2-digit"
+  });
+  return `${tgl} ${jam}`;
+}
+
+function rupiah(n){
+  return "Rp " + n.toLocaleString("id-ID");
+}
+
+/* ================= LOAD DATA ================= */
+const listEl = document.getElementById("list");
+
+const q = query(
+  collection(db,"donasi"),
+  where("statusValidasi","==","pending"),
+  orderBy("createdAt","desc")
+);
+
+onSnapshot(q,(snap)=>{
+  if(snap.empty){
+    listEl.innerHTML = `
+      <tr>
+        <td colspan="4" style="text-align:center;color:#777">
+          Tidak ada donasi menunggu validasi
+        </td>
+      </tr>`;
+    return;
+  }
+
+  let no = 1;
+  let html = "";
+
+  snap.forEach(dok=>{
+    const d = dok.data();
+
+    html += `
+    <tr>
+      <td style="text-align:center">${no}</td>
+
+      <td>
+        <div class="donasi-box">
+          <div class="donasi-tanggal">
+            ${formatTanggalJam(d.createdAt)}
+          </div>
+
+          <div class="donasi-status">
+            ${d.statusDonatur}
+          </div>
+
+          <div class="donasi-nama">
+            ${d.nama}
+          </div>
+
+          <div class="donasi-nominal">
+            ${rupiah(d.nominal)}
+          </div>
+
+          ${d.buktiUrl
+            ? `<a href="${d.buktiUrl}" target="_blank" class="donasi-link">Lihat</a>`
+            : ""
+          }
+        </div>
+      </td>
+
+     
+
+<td>
+  <button class="aksi-btn valid"
+    onclick="validasi('${dok.id}')">
+    ✔ Valid
+  </button>
+
+  <div style="height:8px"></div>
+
+  <button class="aksi-btn tolak"
+    onclick="tolak('${dok.id}')">
+    ✖ Tolak
+  </button>
+</td>
+
+
+
+
+    </tr>
+    `;
+    no++;
+  });
+
+  listEl.innerHTML = html;
+});
+
+/* ================= AKSI ================= */
+window.validasi = async (id)=>{
+  if(!confirm("Validasi donasi ini?")) return;
+  await updateDoc(doc(db,"donasi",id),{
+    statusValidasi:"valid",
+    divalidasiPada: serverTimestamp()
+  });
+};
+
+window.tolak = async (id)=>{
+  if(!confirm("Tolak donasi ini?")) return;
+  await updateDoc(doc(db,"donasi",id),{
+    statusValidasi:"ditolak",
+    ditolakPada: serverTimestamp()
+  });
+};
+</script>
+
+</body>
+</html>
