@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Laporan Keuangan Dana Donasi</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{
+  font-family:Arial, sans-serif;
+  background:#f4f6f8;
+  padding:20px;
+}
+.card{
+  max-width:900px;
+  margin:auto;
+  background:#fff;
+  padding:20px;
+  border-radius:12px;
+  box-shadow:0 2px 10px rgba(0,0,0,.15);
+}
+
+/* HEADER */
+.header{
+  text-align:center;
+  margin-bottom:15px;
+}
+.header h1{
+  font-size:20px;
+  margin:0;
+}
+.header h2{
+  font-size:16px;
+  margin:4px 0 10px;
+  font-weight:normal;
+}
+.rekap-atas{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  margin-top:10px;
+}
+
+.rekap-bawah{
+  display:flex;
+  justify-content:center;
+  margin-top:10px;
+}
+
+.box{
+  flex:1;
+  text-align:center;
+  padding:12px;
+  border-radius:8px;
+  font-weight:bold;
+}
+
+/* WARNA */
+.hijau{
+  background:#e8f5e9;
+  color:#2e7d32;
+}
+
+.merah{
+  background:#ffebee;
+  color:#c62828;
+}
+
+.biru{
+  background:#e3f2fd;
+  color:#1565c0;
+  max-width:300px;
+}
+
+
+.rekap div{
+  text-align:center;
+}
+
+/* TOGGLE */
+button{
+  width:100%;
+  padding:12px;
+  font-size:15px;
+  background:#1565c0;
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  margin:20px 0 10px;
+}
+
+/* JUDUL MODE */
+#judul{
+  text-align:center;
+  margin:10px 0 5px;
+}
+.subjudul{
+  font-size:14px;
+  margin-bottom:10px;
+  text-align:center;
+}
+.total{
+  font-weight:bold;
+  margin-bottom:15px;
+  text-align:center;
+}
+
+/* TABLE */
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:14px;
+}
+th,td{
+  border:1px solid #000;
+  padding:10px;
+  vertical-align:top;
+}
+th{
+  background:#f5f5f5;
+  text-align:center;
+}
+.rincian{line-height:1.6}
+.tanggal{font-size:13px;color:#444}
+.status{font-weight:bold}
+.nominal{text-align:right;font-weight:bold}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+<!-- JUDUL ATAS -->
+<div class="header">
+  <h1>Laporan Keuangan Dana Donasi</h1>
+  <h2>SDN SIDOBANDUNG II</h2>
+</div>
+
+<!-- HEADER KEUANGAN -->
+
+<div class="rekap-atas">
+  <div class="box hijau">
+    Pemasukan<br>
+    <span id="totalPemasukan">Rp 0</span>
+  </div>
+
+  <div class="box merah">
+    Pengeluaran<br>
+    <span id="totalPengeluaran">Rp 0</span>
+  </div>
+</div>
+
+<div class="rekap-bawah">
+  <div class="box biru">
+    Saldo<br>
+    <span id="saldo">Rp 0</span>
+  </div>
+</div>
+
+
+
+
+</div>
+
+<!-- TOGGLE -->
+<button id="toggleBtn">📉 Rincian Pengeluaran</button>
+
+<!-- JUDUL MODE -->
+<h2 id="judul">Pemasukan Donasi</h2>
+<div class="subjudul" id="subjudul">
+Menampilkan donasi yang <b>sudah tervalidasi</b>
+</div>
+
+<div class="total" id="totalInfo">
+Jumlah donasi sampai saat ini adalah Rp 0
+</div>
+
+<!-- TABLE -->
+<table>
+<thead>
+<tr>
+  <th width="20">No</th>
+  <th>Rincian</th>
+  <th width="90">Jumlah Rp</th>
+</tr>
+</thead>
+<tbody id="list">
+<tr>
+  <td colspan="3" style="text-align:center;color:#777">
+    Memuat data...
+  </td>
+</tr>
+</tbody>
+</table>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  query,
+  where,
+  orderBy,
+  onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+/* CONFIG */
+const app = initializeApp({
+  apiKey:"AIzaSyD8SIXXPm_c-TJiaRjHbrishFtU2NICm9M",
+  authDomain:"datasiswa-c10f4.firebaseapp.com",
+  projectId:"datasiswa-c10f4"
+});
+const db = getFirestore(app);
+
+/* ELEMENT */
+const listEl = document.getElementById("list");
+const judulEl = document.getElementById("judul");
+const subjudulEl = document.getElementById("subjudul");
+const totalInfoEl = document.getElementById("totalInfo");
+const toggleBtn = document.getElementById("toggleBtn");
+
+const totalMasukEl = document.getElementById("totalPemasukan");
+const totalKeluarEl = document.getElementById("totalPengeluaran");
+const saldoEl = document.getElementById("saldo");
+
+/* HELPER */
+const rupiah = n => "Rp " + n.toLocaleString("id-ID");
+
+function formatTanggalJam(ts){
+  if(!ts) return "-";
+  const d = ts.toDate();
+  return d.toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric"})+
+         " "+
+         d.toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"});
+}
+function formatTanggalDMY(tgl){
+  if(!tgl) return "-";
+  const [y,m,d] = tgl.split("-");
+  return `${d}-${m}-${y.slice(2)}`;
+}
+
+/* TOTAL GLOBAL */
+let totalMasuk = 0;
+let totalKeluar = 0;
+
+/* HITUNG PEMASUKAN */
+onSnapshot(
+  query(collection(db,"donasi"), where("statusValidasi","==","valid")),
+  snap=>{
+    totalMasuk = 0;
+    snap.forEach(d=> totalMasuk += d.data().nominal || 0);
+    updateHeader();
+  }
+);
+
+/* HITUNG PENGELUARAN */
+onSnapshot(
+  query(collection(db,"pengeluaran")),
+  snap=>{
+    totalKeluar = 0;
+    snap.forEach(d=> totalKeluar += d.data().jumlah || 0);
+    updateHeader();
+  }
+);
+
+function updateHeader(){
+  totalMasukEl.innerHTML = rupiah(totalMasuk);
+  totalKeluarEl.innerHTML = rupiah(totalKeluar);
+  saldoEl.innerHTML = rupiah(totalMasuk - totalKeluar);
+}
+
+/* MODE */
+let mode = "pemasukan";
+let unsub = null;
+
+/* LOAD PEMASUKAN */
+function loadPemasukan(){
+  judulEl.innerHTML = "Rekapitulasi Pemasukan";
+  subjudulEl.innerHTML = "Menampilkan donasi yang <b>sudah tervalidasi</b>";
+  toggleBtn.innerHTML = "📉 Rincian Pengeluaran";
+
+  if(unsub) unsub();
+
+  unsub = onSnapshot(
+    query(
+      collection(db,"donasi"),
+      where("statusValidasi","==","valid"),
+      orderBy("createdAt","desc")
+    ),
+    snap=>{
+      let html="", no=1, total=0;
+      snap.forEach(doc=>{
+        const d=doc.data();
+        total+=d.nominal;
+        html+=`
+        <tr>
+          <td align="center">${no}</td>
+          <td>
+            <div class="rincian">
+              <div class="tanggal">${formatTanggalJam(d.createdAt)}</div>
+              <div class="status">${d.statusDonatur}</div>
+              <div>${d.nama}</div>
+            </div>
+          </td>
+          <td class="nominal">${rupiah(d.nominal)}</td>
+        </tr>`;
+        no++;
+      });
+      listEl.innerHTML = html || `<tr><td colspan="3" align="center">Belum ada data</td></tr>`;
+      totalInfoEl.innerHTML = `Jumlah donasi sampai saat ini adalah <b>${rupiah(total)}</b>`;
+    }
+  );
+}
+
+/* LOAD PENGELUARAN */
+function loadPengeluaran(){
+  judulEl.innerHTML = "Rekapitulasi Pengeluaran";
+  subjudulEl.innerHTML = "<b>Rincian Belanja Pembangunan</b>";
+  toggleBtn.innerHTML = "📊 Rincian Pemasukan";
+
+  if(unsub) unsub();
+
+  unsub = onSnapshot(
+    query(collection(db,"pengeluaran"), orderBy("dibuat","desc")),
+    snap=>{
+      let html="", no=1, total=0;
+      snap.forEach(doc=>{
+        const d=doc.data();
+        total+=d.jumlah;
+        html+=`
+        <tr>
+          <td align="center">${no}</td>
+          <td>
+            <div class="rincian">
+              <div class="tanggal">${formatTanggalDMY(d.tanggal)}</div>
+              <div>${d.uraian}</div>
+            </div>
+          </td>
+          <td class="nominal">${rupiah(d.jumlah)}</td>
+        </tr>`;
+        no++;
+      });
+      listEl.innerHTML = html || `<tr><td colspan="3" align="center">Belum ada data</td></tr>`;
+      totalInfoEl.innerHTML = `Jumlah pengeluaran sampai saat ini adalah <b>${rupiah(total)}</b>`;
+    }
+  );
+}
+
+/* TOGGLE */
+toggleBtn.onclick = ()=>{
+  mode==="pemasukan"
+    ? (mode="pengeluaran", loadPengeluaran())
+    : (mode="pemasukan", loadPemasukan());
+};
+
+/* INIT */
+loadPemasukan();
+</script>
+
+</body>
+</html>
