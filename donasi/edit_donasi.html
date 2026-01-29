@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Edit Keuangan Donasi</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{
+  font-family:Arial, sans-serif;
+  background:#f4f6f8;
+  padding:20px;
+}
+.card{
+  max-width:1100px;
+  margin:auto;
+  background:#fff;
+  padding:20px;
+  border-radius:12px;
+  box-shadow:0 2px 10px rgba(0,0,0,.15);
+}
+h2{text-align:center;margin:10px 0}
+
+button{
+  padding:8px 10px;
+  font-size:13px;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+  margin:2px;
+}
+.btn-toggle{width:100%;background:#1565c0;color:#fff;margin:15px 0}
+.btn-edit{background:#ffb300}
+.btn-delete{background:#c62828;color:#fff}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:14px;
+}
+th,td{
+  border:1px solid #000;
+  padding:8px;
+  vertical-align:top;
+}
+th{text-align:center;background:#f5f5f5}
+.nominal{text-align:right;font-weight:bold}
+.small{font-size:12px;color:#555}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+<h2 id="judul">Edit Pemasukan Donasi</h2>
+
+<button class="btn-toggle" id="toggleBtn">📉 Edit Pengeluaran</button>
+
+<table>
+<thead>
+<tr>
+  <th width="30">No</th>
+  <th>Rincian</th>
+  <th width="120">Jumlah Rp</th>
+  <th width="240">Aksi</th>
+</tr>
+</thead>
+<tbody id="list">
+<tr><td colspan="4" align="center">Memuat data...</td></tr>
+</tbody>
+</table>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+  updateDoc,
+  deleteDoc,
+  doc,
+  Timestamp
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+/* ================= CONFIG ================= */
+const app = initializeApp({
+  apiKey:"AIzaSyD8SIXXPm_c-TJiaRjHbrishFtU2NICm9M",
+  authDomain:"datasiswa-c10f4.firebaseapp.com",
+  projectId:"datasiswa-c10f4"
+});
+const db = getFirestore(app);
+
+/* ================= ELEMENT ================= */
+const listEl = document.getElementById("list");
+const toggleBtn = document.getElementById("toggleBtn");
+const judulEl = document.getElementById("judul");
+
+/* ================= STATE ================= */
+let mode = "pemasukan";
+let unsub = null;
+
+/* cache timestamp lama */
+window._cacheTanggal = {};
+
+/* ================= HELPER ================= */
+const rupiah = n => "Rp " + n.toLocaleString("id-ID");
+
+/* ================= LOAD PEMASUKAN ================= */
+function loadPemasukan(){
+  judulEl.innerHTML = "Edit Pemasukan Donasi";
+  toggleBtn.innerHTML = "📉 Edit Pengeluaran";
+  if(unsub) unsub();
+
+  unsub = onSnapshot(
+    query(
+      collection(db,"donasi"),
+      where("statusValidasi","==","valid"),
+      orderBy("createdAt","desc")
+    ),
+    snap=>{
+      let html="", no=1;
+      snap.forEach(docu=>{
+        const d = docu.data();
+
+        // simpan tanggal lama
+        window._cacheTanggal[docu.id] = d.createdAt;
+
+        html += `
+        <tr>
+          <td align="center">${no}</td>
+          <td>
+            <b>${d.nama}</b><br>
+            ${d.statusDonatur}<br>
+            <span class="small">
+              ${d.createdAt?.toDate().toLocaleDateString("id-ID")}
+            </span>
+          </td>
+          <td class="nominal">${rupiah(d.nominal)}</td>
+          <td align="center">
+            <button class="btn-edit"
+              onclick="editNama('${docu.id}','${d.nama}')">Nama</button>
+            <button class="btn-edit"
+              onclick="editStatus('${docu.id}','${d.statusDonatur}')">Status</button>
+            <button class="btn-edit"
+              onclick="editNominal('${docu.id}','${d.nominal}')">Nominal</button>
+            <button class="btn-edit"
+              onclick="editTanggalDonasi('${docu.id}')">Tanggal</button>
+            <button class="btn-delete"
+              onclick="hapus('donasi','${docu.id}')">Hapus</button>
+          </td>
+        </tr>`;
+        no++;
+      });
+      listEl.innerHTML = html || `<tr><td colspan="4">Kosong</td></tr>`;
+    }
+  );
+}
+
+/* ================= LOAD PENGELUARAN ================= */
+function loadPengeluaran(){
+  judulEl.innerHTML = "Edit Pengeluaran Donasi";
+  toggleBtn.innerHTML = "📊 Edit Pemasukan";
+  if(unsub) unsub();
+
+  unsub = onSnapshot(
+    query(collection(db,"pengeluaran"), orderBy("dibuat","desc")),
+    snap=>{
+      let html="", no=1;
+      snap.forEach(docu=>{
+        const d = docu.data();
+        html += `
+        <tr>
+          <td align="center">${no}</td>
+          <td>
+            <b>${d.uraian}</b><br>
+            <span class="small">${d.tanggal}</span>
+          </td>
+          <td class="nominal">${rupiah(d.jumlah)}</td>
+          <td align="center">
+            <button class="btn-edit"
+              onclick="editUraian('${docu.id}','${d.uraian}')">Uraian</button>
+            <button class="btn-edit"
+              onclick="editTanggalKeluar('${docu.id}','${d.tanggal}')">Tanggal</button>
+            <button class="btn-edit"
+              onclick="editJumlah('${docu.id}','${d.jumlah}')">Jumlah</button>
+            <button class="btn-delete"
+              onclick="hapus('pengeluaran','${docu.id}')">Hapus</button>
+          </td>
+        </tr>`;
+        no++;
+      });
+      listEl.innerHTML = html || `<tr><td colspan="4">Kosong</td></tr>`;
+    }
+  );
+}
+
+/* ================= EDIT FUNCTIONS ================= */
+window.editNama = async (id,val)=>{
+  const v = prompt("Nama donatur:", val);
+  if(v) await updateDoc(doc(db,"donasi",id),{nama:v});
+};
+
+window.editStatus = async (id,val)=>{
+  const v = prompt("Status donatur:", val);
+  if(v) await updateDoc(doc(db,"donasi",id),{statusDonatur:v});
+};
+
+window.editNominal = async (id,val)=>{
+  const v = prompt("Nominal donasi:", val);
+  if(v) await updateDoc(doc(db,"donasi",id),{nominal:Number(v)});
+};
+
+/* === EDIT TANGGAL PEMASUKAN (YYYY-MM-DD) === */
+window.editTanggalDonasi = async (id)=>{
+  const ts = window._cacheTanggal[id];
+  if(!ts) return;
+
+  const lama = ts.toDate().toISOString().split("T")[0];
+  const v = prompt("Tanggal (YYYY-MM-DD):", lama);
+  if(!v) return;
+
+  await updateDoc(doc(db,"donasi",id),{
+    createdAt: Timestamp.fromDate(new Date(v+"T00:00:00"))
+  });
+};
+
+/* === EDIT PENGELUARAN === */
+window.editUraian = async (id,val)=>{
+  const v = prompt("Uraian pengeluaran:", val);
+  if(v) await updateDoc(doc(db,"pengeluaran",id),{uraian:v});
+};
+
+window.editTanggalKeluar = async (id,val)=>{
+  const v = prompt("Tanggal (YYYY-MM-DD):", val);
+  if(v) await updateDoc(doc(db,"pengeluaran",id),{tanggal:v});
+};
+
+window.editJumlah = async (id,val)=>{
+  const v = prompt("Jumlah pengeluaran:", val);
+  if(v) await updateDoc(doc(db,"pengeluaran",id),{jumlah:Number(v)});
+};
+
+window.hapus = async (col,id)=>{
+  if(confirm("Yakin ingin menghapus data ini?")){
+    await deleteDoc(doc(db,col,id));
+  }
+};
+
+/* ================= TOGGLE ================= */
+toggleBtn.onclick = ()=>{
+  mode==="pemasukan"
+    ? (mode="pengeluaran", loadPengeluaran())
+    : (mode="pemasukan", loadPemasukan());
+};
+
+/* INIT */
+loadPemasukan();
+</script>
+
+</body>
+</html>
