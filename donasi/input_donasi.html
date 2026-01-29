@@ -64,16 +64,30 @@ button:disabled{background:#aaa}
 
 <!-- STATUS DONATUR -->
 <label>Status Donatur</label>
+
 <select id="status">
   <option value="">-- Pilih Status --</option>
-  <option value="LAINNYA">Status Lainnya</option>
+
+  <!-- TAMBAHAN BARU -->
+  <option>Orang Tua / Wali Murid</option>
+  <option>Kegiatan Tahlil Siswa</option>
+  <option>Keluarga SDN Sidobandung II</option>
+
   <option disabled>──────────</option>
+
+  <!-- STATUS LAINNYA -->
+  <option value="LAINNYA">Status Lainnya</option>
+
+  <option disabled>──────────</option>
+
+  <!-- ALUMNI -->
   <script>
     for(let i=1960;i<=2025;i++){
       document.write(`<option>Alumni Lulusan Tahun ${i}</option>`);
     }
   </script>
 </select>
+
 
 <input id="statusLainnya"
        placeholder="Tulis status donatur"
