@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal Admin Bakti Almamater</title>
+
+<style>
+body{
+  margin:0;
+  font-family:system-ui, Arial, sans-serif;
+  text-align:center;
+  color:#0f172a;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  min-height:100vh;
+  padding:20px;
+  background:linear-gradient(160deg,#e0f2fe,#7dd3fc,#38bdf8);
+}
+
+header img{
+  width:140px;
+  height:140px;
+  object-fit:contain;
+  margin-bottom:12px;
+  border-radius:50%;
+  background:#fff;
+  box-shadow:0 4px 12px rgba(0,0,0,.15);
+}
+
+h1{font-size:22px;margin:0;font-weight:800}
+h2{font-size:16px;margin:4px 0 24px;font-weight:700}
+
+.menu{
+  width:100%;
+  max-width:380px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+.menu a,
+.menu button{
+  width:100%;
+  height:56px;
+  margin-bottom:14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:14px;
+  font-size:16px;
+  font-weight:700;
+  border:none;
+  cursor:pointer;
+  color:#fff;
+  background:#0284c7;
+  box-shadow:0 6px 16px rgba(2,132,199,.35);
+  text-decoration:none;
+}
+
+.menu a:hover,
+.menu button:hover{background:#0369a1}
+.menu a:active,
+.menu button:active{transform:scale(.97)}
+
+footer{
+  margin-top:auto;
+  font-size:13px;
+  opacity:.7;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <img src="https://i.imgur.com/RruvYpK.jpeg" alt="Logo Sekolah">
+</header>
+
+<h1>Portal Admin</h1>
+<h2>Bakti Almamater SDN Sidobandung II</h2>
+
+<div class="menu">
+
+  <!-- TANPA PASSWORD -->
+  <a href="input_donasi.html">Input Donasi</a>
+
+  <!-- PAKAI PASSWORD -->
+  <button onclick="cekPassword('validasi.html')">
+    Validasi Donasi
+  </button>
+
+  <button onclick="cekPassword('pengeluaran.html')">
+    Input Pengeluaran
+  </button>
+
+  <button onclick="cekPassword('edit_donasi.html')">
+    Edit Donasi
+  </button>
+
+  <!-- TANPA PASSWORD -->
+  <a href="input_progres.html">Input Progres Pembangunan</a>
+
+  <a href="input_kegiatan.html">Input Kegiatan Sekolah</a>
+
+</div>
+
+<footer>
+  © 2026 Bakti Almamater
+</footer>
+
+<script>
+const PASSWORD = "Sbd";
+
+function cekPassword(link){
+  const input = prompt("Masukkan password admin:");
+  if(input === null) return;
+
+  if(input === PASSWORD){
+    window.location.href = link;
+  }else{
+    alert("Password salah!");
+  }
+}
+</script>
+
+</body>
+</html>
