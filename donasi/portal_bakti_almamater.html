@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal Bakti Almamater</title>
+
+<style>
+body{
+  margin:0;
+  font-family:system-ui, Arial, sans-serif;
+  text-align:center;
+  color:#0f172a;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  min-height:100vh;
+  padding:20px;
+  background:linear-gradient(160deg,#ffe0b2,#ffb74d,#ff9800);
+}
+
+/* LOGO */
+header img{
+  width:160px;
+  height:160px;
+  object-fit:contain;
+  margin-bottom:12px;
+  border-radius:50%;
+  background:#fff;
+  box-shadow:0 4px 12px rgba(0,0,0,.15);
+}
+
+/* JUDUL */
+h1{font-size:22px;margin:0;font-weight:800}
+h4{font-size:14px;margin:0;font-weight:600}
+h2{font-size:18px;margin:4px 0 24px;font-weight:700}
+h3{font-size:18px;margin:1px 0 6px;font-weight:800}
+
+
+/* MENU */
+.menu{
+  width:100%;
+  max-width:360px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+.menu button,
+.menu a{
+  width:100%;
+  height:56px;
+  margin-bottom:14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  border-radius:14px;
+  font-size:16px;
+  font-weight:700;
+  border:none;
+  text-decoration:none;
+  cursor:pointer;
+  color:#fff;
+  background:#0284c7;
+  box-shadow:0 6px 16px rgba(2,132,199,.35);
+  box-sizing:border-box;
+}
+
+.menu button:active,
+.menu a:active{transform:scale(.97)}
+
+/* CARD */
+.card{
+  width:100%;
+  max-width:360px;
+  background:#fff;
+  border-radius:16px;
+  padding:16px;
+  margin-top:10px;
+  box-shadow:0 6px 18px rgba(0,0,0,.18);
+  display:none;
+  animation:fade .3s ease;
+}
+
+@keyframes fade{
+  from{opacity:0;transform:translateY(-6px)}
+  to{opacity:1;transform:none}
+}
+
+.card img{
+  width:120px;
+  height:120px;
+  border-radius:50%;
+  object-fit:cover;
+  margin-bottom:12px;
+}
+
+.card h3{margin:0 0 10px}
+.card p{font-size:15px;line-height:1.6;white-space:pre-line}
+</style>
+</head>
+
+<body>
+
+<header>
+  <img src="https://i.imgur.com/RruvYpK.jpeg" alt="Logo Sekolah">
+</header>
+
+<h1>Portal Bakti Almamater</h1>
+<h2>SDN SIDOBANDUNG II</h2>
+
+<div class="menu">
+
+<button id="sambutanBtn" onclick="toggleSambutan()">
+  Sambutan Kepala Sekolah
+</button>
+
+<!-- KEPALA SEKOLAH -->
+<div class="card" id="cardKepsek">
+  <img src="https://firebasestorage.googleapis.com/v0/b/datasiswa-c10f4.firebasestorage.app/o/zakun1.jpg?alt=media&token=56774d5e-7d02-4935-86ef-62b75df1d15d">
+
+
+<h4>Muhammad Nurzakun, S.Pd.I,MM</h4>  
+<h3>Kepala Sekolah</h3>
+  <p>
+Assalamu’alaikum wr wb.
+Puji syukur ke hadirat Allah SWT,
+SDN Sidobandung II adalah salah satu 
+bagian dari sisi kehidupan kita,
+kita besar dari lembaga ini.
+Portal ini menjadi bukti
+rasa terima kasih kita kepada almamater
+semoga para Guru kita  
+senantiasa dalam kasih sayang Allah SWT
+Aamiin..
+Wassalamu’alaikum wr wb.
+  </p>
+</div>
+
+<!-- KOMITE -->
+<div class="card" id="cardKomite">
+ <img src="https://firebasestorage.googleapis.com/v0/b/datasiswa-c10f4.firebasestorage.app/o/pakJiran.jpg?alt=media&token=9250ac08-fda5-4224-8045-37595ff60003">
+
+  <h3>Komite Sekolah</h3>
+  <p>
+Assalamu’alaikum warahmatullahi wabarakatuh.
+
+Komite sekolah mendukung penuh
+kegiatan Bakti Almamater demi
+kemajuan sarana dan prasarana
+sekolah.
+  </p>
+</div>
+
+<!-- PANITIA -->
+<div class="card" id="cardPanitia">
+  <h3>Panitia Bakti Almamater</h3>
+  <p>
+Penasihat 
+Jiran (Komite Sekolah)
+
+Penanggung Jawab 
+Muhammad Nurzakun (Kepala Sekolah)
+
+Ketua
+Lasuri (Alumni)
+
+Sekretaris 
+Ida Ayuningsih (Alumni/Guru SDN Sidobandung II)
+
+Bendahara 
+Eko Rudianto (Alumni/Guru SDN Sidobandung II)
+
+Anggota :
+- ......................
+- ......................
+  </p>
+</div>
+
+<a href="#">Progres Pembangunan</a>
+<a href="#">Donasi</a>
+<a href="#">Laporan Keuangan</a>
+
+</div>
+
+<script>
+let step = 0;
+
+function hideAll(){
+  cardKepsek.style.display = "none";
+  cardKomite.style.display = "none";
+  cardPanitia.style.display = "none";
+}
+
+function toggleSambutan(){
+  const btn = document.getElementById("sambutanBtn");
+  hideAll();
+  step++;
+
+  if(step === 1){
+    cardKepsek.style.display = "block";
+    btn.innerText = "Sambutan Komite";
+  }else if(step === 2){
+    cardKomite.style.display = "block";
+    btn.innerText = "Susunan Panitia Bakti Almamater";
+  }else if(step === 3){
+    cardPanitia.style.display = "block";
+    btn.innerText = "Sambutan Kepala Sekolah";
+  }else{
+    step = 0;
+    hideAll();
+  }
+}
+</script>
+
+</body>
+</html>
