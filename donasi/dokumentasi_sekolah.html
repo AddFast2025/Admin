@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Dokumentasi Kegiatan Sekolah - SDN Sidobandung II</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{
+  margin:0;
+  font-family:Arial, sans-serif;
+  background:#f4f6f8;
+  color:#0f172a
+}
+header{
+  background:#1565c0;
+  color:#fff;
+  padding:20px;
+  text-align:center
+}
+header h1{
+  margin:0;
+  font-size:18px
+}
+header h2{
+  margin:6px 0 0;
+  font-size:16px;
+  font-weight:normal
+}
+.container{
+  max-width:360px;
+  margin:auto;
+  padding:15px
+}
+.card{
+  background:#fff;
+  border-radius:12px;
+  box-shadow:0 2px 8px rgba(0,0,0,.12);
+  margin-bottom:18px;
+  overflow:hidden
+}
+.card img{
+  width:100%;
+  height:auto;
+  display:block;
+  background:#eee
+}
+.card-body{
+  padding:12px
+}
+.tanggal{
+  font-size:12px;
+  color:#555;
+  margin-bottom:6px
+}
+.judul{
+  font-weight:bold;
+text-align:center;
+    margin-bottom:6px
+
+}
+.keterangan{
+  
+  font-size:14px;
+  line-height:1.5;
+  color:#333
+}
+.loading{
+  text-align:center;
+  color:#777;
+  margin-top:30px
+}
+.card h1{
+  font-size:26px;   /* paling besar */
+  margin-bottom:6px;
+}
+
+.card h2{
+  font-size:20px;   /* judul utama */
+  margin-bottom:4px;
+}
+
+.card h3{
+  font-size:14px;   /* sub judul */
+  font-weight:normal;
+  color:#555;
+}
+
+
+footer{
+  text-align:center;
+  font-size:12px;
+  color:#666;
+  margin:30px 0 10px
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>📸 Dokumentasi Kegiatan Sekolah</h1>
+  <h2>SDN Sidobandung II</h2>
+</header>
+
+<div class="container" id="listKegiatan">
+  <div class="loading">⏳ Memuat dokumentasi kegiatan...</div>
+</div>
+
+<footer>
+  © SDN Sidobandung II
+</footer>
+
+<script type="module">
+import { initializeApp } from
+"https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  query,
+  where,
+  orderBy,
+  onSnapshot
+} from
+"https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+/* ===== FIREBASE CONFIG ===== */
+const app = initializeApp({
+  apiKey:"AIzaSyD8SIXXPm_c-TJiaRjHbrishFtU2NICm9M",
+  authDomain:"datasiswa-c10f4.firebaseapp.com",
+  projectId:"datasiswa-c10f4"
+});
+
+const db = getFirestore(app);
+const listEl = document.getElementById("listKegiatan");
+
+/* ===== GOOGLE DRIVE THUMBNAIL FIX ===== */
+function driveThumbnail(url){
+  if(!url) return "";
+  const match = url.match(/[-\w]{25,}/); // ambil FILE_ID
+  if(!match) return "";
+  return `https://drive.google.com/thumbnail?id=${match[0]}&sz=w1200`;
+}
+
+/* ===== LOAD DATA PUBLIK ===== */
+function loadPublik(){
+  const q = query(
+    collection(db,"kegiatanSekolah"),
+    where("tampil","==",true),
+    orderBy("tanggal","desc"),
+    orderBy("createdAt","desc")
+  );
+
+  onSnapshot(q,(snap)=>{
+    if(snap.empty){
+      listEl.innerHTML = `
+        <div class="loading">
+          Belum ada dokumentasi kegiatan yang ditampilkan
+        </div>`;
+      return;
+    }
+
+    let html = "";
+
+    snap.forEach(doc=>{
+      const d = doc.data();
+
+      html += `
+      <div class="card">
+<br>
+          <div class="judul">${d.judul}</div>
+        ${d.fotoUrl ? `
+          <img src="${driveThumbnail(d.fotoUrl)}"
+               loading="lazy"
+               referrerpolicy="no-referrer">
+        ` : ``}
+
+        <div class="card-body">
+        
+          <div class="keterangan">
+            ${d.keterangan || ""}
+          </div>
+        </div>
+      </div>
+      `;
+    });
+
+    listEl.innerHTML = html;
+  });
+}
+
+loadPublik();
+</script>
+
+</body>
+</html>
