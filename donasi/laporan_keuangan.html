@@ -106,6 +106,30 @@ button{
   text-align:center;
 }
 
+.mode-btn{
+  display:flex;
+  gap:10px;
+  margin:20px 0 10px;
+}
+
+.mode-btn button{
+  flex:1;
+  padding:12px;
+  font-size:15px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  background:#e0e0e0;
+  color:#333;
+  font-weight:bold;
+}
+
+.mode-btn button.active{
+  background:#1565c0;
+  color:#fff;
+}
+
+
 /* TABLE */
 table{
   width:100%;
@@ -163,8 +187,11 @@ th{
 
 </div>
 
-<!-- TOGGLE -->
-<button id="toggleBtn">📉 Rincian Pengeluaran</button>
+<!-- TOMBOL MODE -->
+<div class="mode-btn">
+  <button id="btnMasuk" class="active">📊 Pemasukan</button>
+  <button id="btnKeluar">📉 Pengeluaran</button>
+</div>
 
 <!-- JUDUL MODE -->
 <h2 id="judul">Pemasukan Donasi</h2>
@@ -220,7 +247,9 @@ const listEl = document.getElementById("list");
 const judulEl = document.getElementById("judul");
 const subjudulEl = document.getElementById("subjudul");
 const totalInfoEl = document.getElementById("totalInfo");
-const toggleBtn = document.getElementById("toggleBtn");
+const btnMasuk = document.getElementById("btnMasuk");
+const btnKeluar = document.getElementById("btnKeluar");
+
 
 const totalMasukEl = document.getElementById("totalPemasukan");
 const totalKeluarEl = document.getElementById("totalPengeluaran");
@@ -272,6 +301,14 @@ function updateHeader(){
   saldoEl.innerHTML = rupiah(totalMasuk - totalKeluar);
 }
 
+function setActive(btn){
+  btnMasuk.classList.remove("active");
+  btnKeluar.classList.remove("active");
+  btn.classList.add("active");
+}
+
+
+
 /* MODE */
 let mode = "pemasukan";
 let unsub = null;
@@ -280,7 +317,7 @@ let unsub = null;
 function loadPemasukan(){
   judulEl.innerHTML = "Rekapitulasi Pemasukan";
   subjudulEl.innerHTML = "Menampilkan donasi yang <b>sudah tervalidasi</b>";
-  toggleBtn.innerHTML = "📉 Rincian Pengeluaran";
+ 
 
   if(unsub) unsub();
 
@@ -319,7 +356,7 @@ function loadPemasukan(){
 function loadPengeluaran(){
   judulEl.innerHTML = "Rekapitulasi Pengeluaran";
   subjudulEl.innerHTML = "<b>Rincian Belanja Pembangunan</b>";
-  toggleBtn.innerHTML = "📊 Rincian Pemasukan";
+
 
   if(unsub) unsub();
 
@@ -349,12 +386,20 @@ function loadPengeluaran(){
   );
 }
 
-/* TOGGLE */
-toggleBtn.onclick = ()=>{
-  mode==="pemasukan"
-    ? (mode="pengeluaran", loadPengeluaran())
-    : (mode="pemasukan", loadPemasukan());
+btnMasuk.onclick = ()=>{
+  mode = "pemasukan";
+  setActive(btnMasuk);
+  loadPemasukan();
 };
+
+btnKeluar.onclick = ()=>{
+  mode = "pengeluaran";
+  setActive(btnKeluar);
+  loadPengeluaran();
+};
+
+
+
 
 /* INIT */
 loadPemasukan();
