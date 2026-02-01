@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Pesan & Kesan Alumni</title>
+
+<style>
+body{
+  margin:0;
+  font-family:system-ui, Arial, sans-serif;
+  background:#f1f5f9;
+  min-height:100vh;
+  padding:20px;
+}
+
+.container{
+  max-width:900px;
+  margin:auto;
+}
+
+h1{
+  margin:0;
+  font-size:24px;
+  font-weight:800;
+  text-align:center;
+}
+h2{
+  margin:6px 0 20px;
+  font-size:16px;
+  font-weight:600;
+  text-align:center;
+  color:#334155;
+}
+
+/* ITEM */
+.item{
+  background:#fff;
+  border-radius:14px;
+  padding:14px;
+  margin-bottom:12px;
+  box-shadow:0 4px 14px rgba(0,0,0,.12);
+}
+
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:10px;
+}
+
+.nama{
+  font-weight:800;
+  font-size:16px;
+}
+
+.meta{
+  font-size:13px;
+  color:#475569;
+}
+
+.alamat{
+  margin-top:4px;
+  font-size:13px;
+  color:#334155;
+}
+
+.pesan{
+  margin-top:8px;
+  font-size:14px;
+  line-height:1.6;
+}
+
+/* BUTTON */
+.actions{
+  margin-top:10px;
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.btn{
+  padding:8px 12px;
+  border:none;
+  border-radius:10px;
+  font-size:13px;
+  font-weight:700;
+  cursor:pointer;
+}
+
+.show{background:#16a34a;color:#fff}
+.hide{background:#eab308;color:#000}
+.del{background:#dc2626;color:#fff}
+
+.status{
+  font-size:12px;
+  font-weight:700;
+  margin-top:4px;
+}
+.true{color:#16a34a}
+.false{color:#dc2626}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+  <h1>Admin Pesan & Kesan Alumni</h1>
+  <h2>SDN Sidobandung II</h2>
+
+  <div id="listAdmin"></div>
+</div>
+
+<!-- FIREBASE -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getFirestore, collection, query, orderBy, onSnapshot, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+/* CONFIG */
+const app = initializeApp({
+  apiKey:"AIzaSyD8SIXXPm_c-TJiaRjHbrishFtU2NICm9M",
+  authDomain:"datasiswa-c10f4.firebaseapp.com",
+  projectId:"datasiswa-c10f4"
+});
+const db = getFirestore(app);
+
+/* LOAD DATA */
+const q = query(
+  collection(db,"pesan_kesan"),
+  orderBy("createdAt","desc")
+);
+
+onSnapshot(q,(snap)=>{
+  const list = document.getElementById("listAdmin");
+  list.innerHTML="";
+
+  snap.forEach(dok=>{
+    const d = dok.data();
+    const id = dok.id;
+
+    list.innerHTML += `
+      <div class="item">
+        <div class="header">
+          <div>
+            <div class="nama">${d.nama}</div>
+            <div class="meta">
+              Lulusan ${d.lulusan || "-"}
+              ${d.wa ? " · WA : "+d.wa : ""}
+            </div>
+            <div class="alamat">Alamat : ${d.alamat || "-"}</div>
+          </div>
+          <div class="status ${d.tampil ? "true":"false"}">
+            ${d.tampil ? "DITAMPILKAN" : "DISEMBUNYIKAN"}
+          </div>
+        </div>
+
+        <div class="pesan">${d.pesan}</div>
+
+        <div class="actions">
+          ${
+            d.tampil
+            ? `<button class="btn hide" onclick="setTampil('${id}', false)">Sembunyikan</button>`
+            : `<button class="btn show" onclick="setTampil('${id}', true)">Tampilkan</button>`
+          }
+          <button class="btn del" onclick="hapusPesan('${id}')">Hapus</button>
+        </div>
+      </div>
+    `;
+  });
+});
+
+/* ACTIONS */
+window.setTampil = async function(id, val){
+  await updateDoc(doc(db,"pesan_kesan",id),{ tampil: val });
+}
+
+window.hapusPesan = async function(id){
+  if(confirm("Yakin ingin menghapus pesan ini?")){
+    await deleteDoc(doc(db,"pesan_kesan",id));
+  }
+}
+</script>
+
+</body>
+</html>
