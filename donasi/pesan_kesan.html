@@ -76,10 +76,8 @@ input, textarea{
 }
 textarea{min-height:100px}
 
-/* LIST PESAN */
-.list{
-  margin-top:20px;
-}
+/* LIST */
+.list{margin-top:20px}
 .item{
   background:#fff;
   padding:14px;
@@ -87,20 +85,10 @@ textarea{min-height:100px}
   margin-bottom:12px;
   box-shadow:0 4px 14px rgba(0,0,0,.15);
 }
-.item h3{
-  margin:0;
-  font-size:16px;
-  font-weight:800;
-}
-.item small{
-  color:#475569;
-  font-size:13px;
-}
-.item p{
-  margin-top:6px;
-  font-size:14px;
-  line-height:1.5;
-  white-space:pre-line;
+.tanggal{
+  font-size:12px;
+  font-weight:none;
+  color:#0f172a;
 }
 </style>
 </head>
@@ -111,8 +99,7 @@ textarea{min-height:100px}
   <h1>Pesan & Kesan Alumni</h1>
   <h2>SDN Sidobandung II</h2>
 
- <button class="btn" onclick="tampilkanForm()">Pesan Kesan</button>
-
+  <button class="btn" onclick="tampilkanForm()">Pesan Kesan</button>
 
   <!-- FORM -->
   <div class="form" id="formPesan">
@@ -151,30 +138,41 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
+/* FORMAT TANGGAL */
+function formatTanggal(ts){
+  if(!ts) return "-";
+  const d = ts.toDate();
+  return d.toLocaleString("id-ID",{
+    day:"2-digit",
+    month:"2-digit",
+    year:"2-digit",
+    hour:"2-digit",
+    minute:"2-digit"
+  });
+}
+
 window.tampilkanForm = function(){
   document.getElementById("formPesan").style.display = "block";
 }
 
 /* SIMPAN */
 window.simpanPesan = async function(){
-  const nama = namaEl.value.trim();
-  const lulusan = lulusanEl.value.trim();
-  const alamat = alamatEl.value.trim();
-  const wa = waEl.value.trim();
-  const pesan = pesanEl.value.trim();
-
-  if(!nama || !pesan){
+  if(!nama.value || !pesan.value){
     alert("Nama dan Pesan wajib diisi");
     return;
   }
 
   await addDoc(collection(db,"pesan_kesan"),{
-    nama, lulusan, alamat, wa, pesan,
-    tampil:true,                // ✅ langsung tampil
+    nama: nama.value,
+    lulusan: lulusan.value,
+    alamat: alamat.value,
+    wa: wa.value,
+    pesan: pesan.value,
+    tampil:true,
     createdAt: serverTimestamp()
   });
 
-  namaEl.value=lulusanEl.value=alamatEl.value=waEl.value=pesanEl.value="";
+  nama.value=lulusan.value=alamat.value=wa.value=pesan.value="";
   document.getElementById("formPesan").style.display="none";
 }
 
@@ -186,44 +184,43 @@ const q = query(
 );
 
 onSnapshot(q,(snap)=>{
-  const list = document.getElementById("listPesan");
-  list.innerHTML="";
+  listPesan.innerHTML="";
   snap.forEach(doc=>{
     const d = doc.data();
-    
 
-list.innerHTML += `
-  <div class="item">
-    <div style="font-weight:800;font-size:15px">
-      ${d.nama}
-      <span style="font-weight:500;font-size:13px;color:#475569">
-        _ Lulus ${d.lulusan || "-"}
-        ${d.wa ? ` _ WA: ${d.wa}` : ""}
-      </span>
-    </div>
+    listPesan.innerHTML += `
+      <div class="item">
+        <div class="tanggal">
+          ${formatTanggal(d.createdAt)}
+        </div>
 
-    <div style="margin-top:4px;font-size:13px;color:#334155">
-      Alamat : ${d.alamat || "-"}
-    </div>
+        <div style="font-weight:800;font-size:15px">
+          ${d.nama}
+          <span style="font-weight:500;font-size:13px;color:#475569">
+            _ Lulus ${d.lulusan || "-"}
+            ${d.wa ? ` _ WA: ${d.wa}` : ""}
+          </span>
+        </div>
 
-    <div style="margin-top:8px;font-size:14px;line-height:1.6">
-      ${d.pesan}
-    </div>
-  </div>
-`;
+        <div style="margin-top:4px;font-size:13px;color:#334155">
+          Alamat : ${d.alamat || "-"}
+        </div>
 
-
-
-
+        <div style="margin-top:8px;font-size:16px;line-height:1.6">
+          ${d.pesan}
+        </div>
+      </div>
+    `;
   });
 });
 
 /* SHORTCUT */
-const namaEl = document.getElementById("nama");
-const lulusanEl = document.getElementById("lulusan");
-const alamatEl = document.getElementById("alamat");
-const waEl = document.getElementById("wa");
-const pesanEl = document.getElementById("pesan");
+const nama = document.getElementById("nama");
+const lulusan = document.getElementById("lulusan");
+const alamat = document.getElementById("alamat");
+const wa = document.getElementById("wa");
+const pesan = document.getElementById("pesan");
+const listPesan = document.getElementById("listPesan");
 </script>
 
 </body>
