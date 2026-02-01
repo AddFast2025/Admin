@@ -59,6 +59,12 @@ h2{
   color:#475569;
 }
 
+.tanggal{
+  font-size:13px;
+  font-weight:none;
+  color:#0f172a;
+}
+
 .alamat{
   margin-top:4px;
   font-size:13px;
@@ -67,7 +73,7 @@ h2{
 
 .pesan{
   margin-top:8px;
-  font-size:14px;
+  font-size:16px;
   line-height:1.6;
 }
 
@@ -124,6 +130,19 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
+/* FORMAT TANGGAL & JAM */
+function formatTanggal(ts){
+  if(!ts) return "-";
+  const d = ts.toDate();
+  return d.toLocaleString("id-ID",{
+    day:"2-digit",
+    month:"2-digit",
+    year:"2-digit",
+    hour:"2-digit",
+    minute:"2-digit"
+  });
+}
+
 /* LOAD DATA */
 const q = query(
   collection(db,"pesan_kesan"),
@@ -142,19 +161,32 @@ onSnapshot(q,(snap)=>{
       <div class="item">
         <div class="header">
           <div>
-            <div class="nama">${d.nama}</div>
+            <div class="tanggal">
+              ${formatTanggal(d.createdAt)}
+            </div>
+
+            <div class="nama">
+              ${d.nama}
+            </div>
+
             <div class="meta">
               Lulusan ${d.lulusan || "-"}
-              ${d.wa ? " · WA : "+d.wa : ""}
+              ${d.wa ? " · No WA : " + d.wa : ""}
             </div>
-            <div class="alamat">Alamat : ${d.alamat || "-"}</div>
+
+            <div class="alamat">
+              Alamat : ${d.alamat || "-"}
+            </div>
           </div>
+
           <div class="status ${d.tampil ? "true":"false"}">
             ${d.tampil ? "DITAMPILKAN" : "DISEMBUNYIKAN"}
           </div>
         </div>
 
-        <div class="pesan">${d.pesan}</div>
+        <div class="pesan">
+          ${d.pesan}
+        </div>
 
         <div class="actions">
           ${
