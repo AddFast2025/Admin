@@ -112,9 +112,28 @@ h3{font-size:18px;margin:1px 0 6px;font-weight:800}
 
 <div class="menu">
 
-<button id="sambutanBtn" onclick="toggleSambutan()">
-  Sambutan Kepala Sekolah
+<button id="sambutanBtn" onclick="tampilkanSemua()">
+  Sambutan
 </button>
+
+
+<!-- KOMITE -->
+<div class="card" id="cardKomite">
+ <img src="https://firebasestorage.googleapis.com/v0/b/datasiswa-c10f4.firebasestorage.app/o/pakJiran.jpg?alt=media&token=9250ac08-fda5-4224-8045-37595ff60003">
+
+<h4>Jiran</h4>  
+  <h3>Komite Sekolah</h3>
+  <p>
+Assalamu’alaikum warahmatullahi wabarakatuh.
+Terima kasih saya ucapkan kepada segenap Guru 
+di SDN Sidobandung II yang selalu berinovasi
+demi kemajuan SDN Sidobandung II tercinta
+Kami Komite sekolah dan mengajak seluruh alumni 
+untuk mendukung penuh kegiatan Bakti Almamater demi kebahagiaan dan kenyamanan anak-anak kita dalam belajar.
+  </p>
+</div>
+
+
 
 <!-- KEPALA SEKOLAH -->
 <div class="card" id="cardKepsek">
@@ -135,21 +154,6 @@ semoga para Guru kita
 senantiasa dalam kasih sayang Allah SWT
 Aamiin..
 Wassalamu’alaikum wr wb.
-  </p>
-</div>
-
-<!-- KOMITE -->
-<div class="card" id="cardKomite">
- <img src="https://firebasestorage.googleapis.com/v0/b/datasiswa-c10f4.firebasestorage.app/o/pakJiran.jpg?alt=media&token=9250ac08-fda5-4224-8045-37595ff60003">
-
-  <h3>Komite Sekolah</h3>
-  <p>
-Assalamu’alaikum warahmatullahi wabarakatuh.
-
-Komite sekolah mendukung penuh
-kegiatan Bakti Almamater demi
-kemajuan sarana dan prasarana
-sekolah.
   </p>
 </div>
 
@@ -181,38 +185,19 @@ Anggota :
 <a href="progres.html">Progres Pembangunan</a>
 <a href="input_donasi.html">Donasi</a>
 <a href="laporan_keuangan.html">Laporan Keuangan</a>
+<a href="dokumentasi_sekolah.html">Kegiatan Sekolah</a>
 
 </div>
 
 <script>
-let step = 0;
+function tampilkanSemua(){
+  document.getElementById("cardKomite").style.display = "block";
+  document.getElementById("cardKepsek").style.display = "block";
 
-function hideAll(){
-  cardKepsek.style.display = "none";
-  cardKomite.style.display = "none";
-  cardPanitia.style.display = "none";
-}
-
-function toggleSambutan(){
-  const btn = document.getElementById("sambutanBtn");
-  hideAll();
-  step++;
-
-  if(step === 1){
-    cardKepsek.style.display = "block";
-    btn.innerText = "Sambutan Komite";
-  }else if(step === 2){
-    cardKomite.style.display = "block";
-    btn.innerText = "Susunan Panitia Bakti Almamater";
-  }else if(step === 3){
-    cardPanitia.style.display = "block";
-    btn.innerText = "Sambutan Kepala Sekolah";
-  }else{
-    step = 0;
-    hideAll();
-  }
+  document.getElementById("cardPanitia").style.display = "block";
 }
 </script>
+
 
 </body>
 </html>
