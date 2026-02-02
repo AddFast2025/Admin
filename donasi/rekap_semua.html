@@ -24,12 +24,22 @@ h2{
   margin-bottom:10px;
 }
 .subjudul{
-  margin-bottom:15px;
+  margin-bottom:10px;
   font-size:14px;
 }
 .total{
   font-weight:bold;
   margin-bottom:15px;
+}
+
+/* FILTER */
+.filter{
+  margin-bottom:15px;
+}
+.filter select{
+  padding:6px 10px;
+  border-radius:6px;
+  border:1px solid #ccc;
 }
 
 table{
@@ -47,24 +57,10 @@ th{
   text-align:center;
 }
 
-.rincian{
-  line-height:1.6;
-}
-
-.tanggal{
-  font-size:13px;
-  color:#444;
-}
-
-.status{
-  font-weight:bold;
-  margin-top:4px;
-}
-
-.nama{
-  margin-top:4px;
-}
-
+.rincian{ line-height:1.6; }
+.tanggal{ font-size:13px; color:#444; }
+.status{ font-weight:bold; margin-top:4px; }
+.nama{ margin-top:4px; }
 .nominal{
   font-weight:bold;
   text-align:right;
@@ -82,6 +78,13 @@ th{
 Menampilkan donasi yang <b>sudah tervalidasi</b>
 </div>
 
+<div class="filter">
+  Filter Status Donatur :
+  <select id="filterStatus">
+    <option value="all">Semua Status</option>
+  </select>
+</div>
+
 <div class="total" id="totalDonasi">
 Jumlah donasi sampai saat ini adalah Rp 0
 </div>
@@ -89,9 +92,9 @@ Jumlah donasi sampai saat ini adalah Rp 0
 <table>
 <thead>
 <tr>
-  <th width="20">No</th>
+  <th width="30">No</th>
   <th>Rincian</th>
-  <th width="90">Jumlah Rp</th>
+  <th width="120">Jumlah Rp</th>
 </tr>
 </thead>
 <tbody id="list">
@@ -111,11 +114,10 @@ import {
   collection,
   query,
   where,
-  orderBy,
   onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-/* ================= CONFIG ================= */
+/* CONFIG */
 const app = initializeApp({
   apiKey:"AIzaSyD8SIXXPm_c-TJiaRjHbrishFtU2NICm9M",
   authDomain:"datasiswa-c10f4.firebaseapp.com",
@@ -123,83 +125,99 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
-/* ================= HELPER ================= */
+/* HELPER */
 function formatTanggalJam(ts){
   if(!ts) return "-";
   const d = ts.toDate();
-  const tgl = d.toLocaleDateString("id-ID",{
-    day:"2-digit",month:"short",year:"numeric"
-  });
-  const jam = d.toLocaleTimeString("id-ID",{
-    hour:"2-digit",minute:"2-digit"
-  });
-  return `${tgl} ${jam}`;
+  return d.toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric"})
+    + " " +
+    d.toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"});
 }
-
 function rupiah(n){
   return "Rp " + n.toLocaleString("id-ID");
 }
 
-/* ================= LOAD DATA ================= */
+/* ELEMENT */
 const listEl = document.getElementById("list");
 const totalEl = document.getElementById("totalDonasi");
+const filterEl = document.getElementById("filterStatus");
 
+let dataDonasi = [];
+
+/* LOAD DATA */
 const q = query(
   collection(db,"donasi"),
-  where("statusValidasi","==","valid"),
-  orderBy("createdAt","desc")
+  where("statusValidasi","==","valid")
 );
 
 onSnapshot(q,(snap)=>{
-  if(snap.empty){
+  dataDonasi = [];
+  const statusSet = new Set();
+
+  snap.forEach(doc=>{
+    const d = doc.data();
+    dataDonasi.push(d);
+    if(d.statusDonatur) statusSet.add(d.statusDonatur);
+  });
+
+  /* isi dropdown status */
+  filterEl.innerHTML =
+    `<option value="all">Semua Status</option>`;
+  statusSet.forEach(s=>{
+    filterEl.innerHTML += `<option value="${s}">${s}</option>`;
+  });
+
+  render();
+});
+
+/* RENDER */
+function render(){
+  const status = filterEl.value;
+  let filtered = dataDonasi.filter(d=>{
+    return status === "all" || d.statusDonatur === status;
+  });
+
+  /* urutkan nominal terbesar */
+  filtered.sort((a,b)=> b.nominal - a.nominal);
+
+  if(filtered.length === 0){
     listEl.innerHTML = `
       <tr>
         <td colspan="3" style="text-align:center;color:#777">
-          Belum ada donasi tervalidasi
+          Data tidak ditemukan
         </td>
       </tr>`;
-    totalEl.innerHTML = "Jumlah donasi sampai saat ini adalah Rp 0";
+    totalEl.innerHTML =
+      "Jumlah donasi sampai saat ini adalah Rp 0";
     return;
   }
 
-  let no = 1;
   let html = "";
   let total = 0;
+  let no = 1;
 
-  snap.forEach(dok=>{
-    const d = dok.data();
+  filtered.forEach(d=>{
     total += d.nominal;
-
     html += `
     <tr>
-      <td style="text-align:center">${no}</td>
-
+      <td style="text-align:center">${no++}</td>
       <td>
         <div class="rincian">
-          <div class="tanggal">
-            ${formatTanggalJam(d.createdAt)}
-          </div>
-          <div class="status">
-            ${d.statusDonatur}
-          </div>
-          <div class="nama">
-            ${d.nama}
-          </div>
+          <div class="tanggal">${formatTanggalJam(d.createdAt)}</div>
+          <div class="status">${d.statusDonatur}</div>
+          <div class="nama">${d.nama}</div>
         </div>
       </td>
-
-      <td class="nominal">
-        ${rupiah(d.nominal)}
-      </td>
-    </tr>
-    `;
-    no++;
+      <td class="nominal">${rupiah(d.nominal)}</td>
+    </tr>`;
   });
 
   listEl.innerHTML = html;
   totalEl.innerHTML =
     `Jumlah donasi sampai saat ini adalah <b>${rupiah(total)}</b>`;
-});
+}
+
+filterEl.addEventListener("change", render);
 </script>
 
 </body>
