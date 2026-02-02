@@ -170,15 +170,24 @@ onSnapshot(q,(snap)=>{
   render();
 });
 
-/* RENDER */
 function render(){
   const status = filterEl.value;
+
   let filtered = dataDonasi.filter(d=>{
     return status === "all" || d.statusDonatur === status;
   });
 
-  /* urutkan nominal terbesar */
-  filtered.sort((a,b)=> b.nominal - a.nominal);
+  /* SORTING */
+  if(status === "all"){
+    // semua status → terbaru
+    filtered.sort((a,b)=>{
+      if(!a.createdAt || !b.createdAt) return 0;
+      return b.createdAt.toDate() - a.createdAt.toDate();
+    });
+  }else{
+    // status tertentu → nominal terbesar
+    filtered.sort((a,b)=> b.nominal - a.nominal);
+  }
 
   if(filtered.length === 0){
     listEl.innerHTML = `
@@ -216,6 +225,7 @@ function render(){
   totalEl.innerHTML =
     `Jumlah donasi sampai saat ini adalah <b>${rupiah(total)}</b>`;
 }
+
 
 filterEl.addEventListener("change", render);
 </script>
