@@ -27,19 +27,19 @@ h2{
   margin-bottom:10px;
   font-size:14px;
 }
-.total{
-  font-weight:bold;
-  margin-bottom:15px;
-}
-
-/* FILTER */
 .filter{
   margin-bottom:15px;
+  font-size:14px;
 }
 .filter select{
   padding:6px 10px;
   border-radius:6px;
   border:1px solid #ccc;
+  margin-right:10px;
+}
+.total{
+  font-weight:bold;
+  margin-bottom:15px;
 }
 
 table{
@@ -79,10 +79,18 @@ Menampilkan donasi yang <b>sudah tervalidasi</b>
 </div>
 
 <div class="filter">
-  Filter Status Donatur :
-  <select id="filterStatus">
-    <option value="all">Semua Status</option>
+  Mode Tampilan :
+  <select id="modeTampil">
+    <option value="detail">Detail Donasi</option>
+    <option value="rekap">Rekap Perkelompok Donatur</option>
   </select>
+
+  <span id="statusWrapper">
+    Status Donatur :
+    <select id="filterStatus">
+      <option value="all">Semua Status</option>
+    </select>
+  </span>
 </div>
 
 <div class="total" id="totalDonasi">
@@ -117,7 +125,7 @@ import {
   onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-/* CONFIG */
+/* ================= CONFIG ================= */
 const app = initializeApp({
   apiKey:"AIzaSyD8SIXXPm_c-TJiaRjHbrishFtU2NICm9M",
   authDomain:"datasiswa-c10f4.firebaseapp.com",
@@ -125,7 +133,7 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
-/* HELPER */
+/* ================= HELPER ================= */
 function formatTanggalJam(ts){
   if(!ts) return "-";
   const d = ts.toDate();
@@ -137,14 +145,16 @@ function rupiah(n){
   return "Rp " + n.toLocaleString("id-ID");
 }
 
-/* ELEMENT */
+/* ================= ELEMENT ================= */
 const listEl = document.getElementById("list");
 const totalEl = document.getElementById("totalDonasi");
 const filterEl = document.getElementById("filterStatus");
+const modeEl = document.getElementById("modeTampil");
+const statusWrapper = document.getElementById("statusWrapper");
 
 let dataDonasi = [];
 
-/* LOAD DATA */
+/* ================= LOAD DATA ================= */
 const q = query(
   collection(db,"donasi"),
   where("statusValidasi","==","valid")
@@ -160,32 +170,76 @@ onSnapshot(q,(snap)=>{
     if(d.statusDonatur) statusSet.add(d.statusDonatur);
   });
 
-  /* isi dropdown status */
   filterEl.innerHTML =
     `<option value="all">Semua Status</option>`;
   statusSet.forEach(s=>{
     filterEl.innerHTML += `<option value="${s}">${s}</option>`;
   });
 
+  toggleStatusFilter();
   render();
 });
 
+/* ================= TOGGLE FILTER ================= */
+function toggleStatusFilter(){
+  if(modeEl.value === "rekap"){
+    statusWrapper.style.display = "none";
+  }else{
+    statusWrapper.style.display = "inline";
+  }
+}
+
+/* ================= RENDER ================= */
 function render(){
+  const mode = modeEl.value;
   const status = filterEl.value;
 
+  /* ===== MODE REKAP ===== */
+  if(mode === "rekap"){
+    const kelompok = {};
+    let grandTotal = 0;
+
+    dataDonasi.forEach(d=>{
+      if(!kelompok[d.statusDonatur]){
+        kelompok[d.statusDonatur] = 0;
+      }
+      kelompok[d.statusDonatur] += d.nominal;
+      grandTotal += d.nominal;
+    });
+
+    const hasil = Object.entries(kelompok)
+      .map(([status,total])=>({status,total}))
+      .sort((a,b)=> b.total - a.total);
+
+    let html = "";
+    let no = 1;
+
+    hasil.forEach(h=>{
+      html += `
+      <tr>
+        <td style="text-align:center">${no++}</td>
+        <td><b>${h.status}</b></td>
+        <td class="nominal">${rupiah(h.total)}</td>
+      </tr>`;
+    });
+
+    listEl.innerHTML = html;
+    totalEl.innerHTML =
+      `Total seluruh donasi adalah <b>${rupiah(grandTotal)}</b>`;
+    return;
+  }
+
+  /* ===== MODE DETAIL ===== */
   let filtered = dataDonasi.filter(d=>{
     return status === "all" || d.statusDonatur === status;
   });
 
-  /* SORTING */
   if(status === "all"){
-    // semua status → terbaru
     filtered.sort((a,b)=>{
       if(!a.createdAt || !b.createdAt) return 0;
       return b.createdAt.toDate() - a.createdAt.toDate();
     });
   }else{
-    // status tertentu → nominal terbesar
     filtered.sort((a,b)=> b.nominal - a.nominal);
   }
 
@@ -226,7 +280,10 @@ function render(){
     `Jumlah donasi sampai saat ini adalah <b>${rupiah(total)}</b>`;
 }
 
-
+modeEl.addEventListener("change", ()=>{
+  toggleStatusFilter();
+  render();
+});
 filterEl.addEventListener("change", render);
 </script>
 
