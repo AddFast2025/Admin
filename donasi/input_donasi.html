@@ -72,6 +72,8 @@ button:disabled{background:#aaa}
   <option>Orang Tua / Wali Murid</option>
   <option>Kegiatan Tahlil Siswa</option>
   <option>Keluarga SDN Sidobandung II</option>
+  <option>Simpatisan / Sponsor</option>
+  <option>Titip Kirim Doa</option>
 
   <option disabled>──────────</option>
 
@@ -82,16 +84,14 @@ button:disabled{background:#aaa}
 
   <!-- ALUMNI -->
   <script>
-    for(let i=1960;i<=2025;i++){
+    for(let i=1979;i<=2025;i++){
       document.write(`<option>Alumni Lulusan Tahun ${i}</option>`);
     }
   </script>
 </select>
 
 
-<input id="statusLainnya"
-       placeholder="Tulis status donatur"
-       style="display:none;margin-top:6px">
+
 
 <!-- NAMA -->
 <label>Nama Donatur</label>
@@ -199,14 +199,17 @@ let uploadedBuktiUrl = "";
 /* ================= STATUS LAINNYA ================= */
 
 statusEl.addEventListener("change",()=>{
-  if(statusEl.value==="LAINNYA"){
-    statusLainnyaEl.style.display="block";
-    statusLainnyaEl.focus();
-  }else{
-    statusLainnyaEl.style.display="none";
-    statusLainnyaEl.value="";
+  if(statusEl.value === "Titip Kirim Doa"){
+    namaEl.value = "Dari : .......... kirim doa untuk : ..........";
+    namaEl.focus();
+  } else {
+    // kosongkan hanya jika sebelumnya contoh titip doa
+    if(namaEl.value.includes("kirim doa untuk")){
+      namaEl.value = "";
+    }
   }
 });
+
 
 /* ================= PREVIEW SAAT PILIH FILE ================= */
 
