@@ -1,1 +1,403 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Guru Guru Kita</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
+<style>
+body{
+  font-family:Arial, sans-serif;
+  background:#f4f6f8;
+  padding:20px
+}
+.card{
+  max-width:520px;
+  margin:auto;
+  background:#fff;
+  padding:14px;
+  border-radius:12px;
+  box-shadow:0 2px 10px rgba(0,0,0,.15)
+}
+h2{text-align:center;margin-bottom:4px}
+h3{text-align:center;margin-top:0;color:#555}
+
+label{font-weight:bold;margin-top:12px;display:block}
+input,textarea,button{
+  width:100%;
+  padding:10px;
+  margin-top:6px;
+  font-size:14px
+}
+textarea{resize:vertical}
+
+button{
+  background:#2e7d32;
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  margin-top:18px;
+  cursor:pointer
+}
+button:disabled{background:#aaa}
+
+#notif{text-align:center;font-weight:bold;margin-top:6px}
+
+#previewBox{
+  margin-top:10px;
+  text-align:center;
+  display:none
+}
+#previewImg{
+  width:200px;
+  border-radius:12px;
+  border:1px solid #ddd
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:14px
+}
+th,td{
+  border:1px solid #ddd;
+  padding:6px;
+  vertical-align:top
+}
+th{background:#e8f5e9}
+
+.action-btn{
+  font-size:12px;
+  padding:2px 6px;
+  cursor:pointer
+}
+.delete{color:red;font-weight:bold}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+  <h2>👩‍🏫 Guru Guru Kita</h2>
+  <h3>SDN Sidobandung II</h3>
+
+  <label>Nama Guru</label>
+  <input id="nama" placeholder="Contoh: Siti Aminah, S.Pd">
+
+  <label>Foto Guru</label>
+  <input type="file" id="foto" accept="image/*">
+
+  <div id="previewBox">
+    <img id="previewImg">
+  </div>
+
+  <label>Keterangan</label>
+  <textarea id="keterangan" rows="3"
+    placeholder="Guru Kelas / Guru Mapel"></textarea>
+
+  <button id="btn">💾 Simpan Daftar Guru</button>
+  <div id="notif"></div>
+</div>
+
+<hr style="margin:30px 0">
+
+<h3 style="text-align:center">📋 Daftar Guru</h3>
+
+<table>
+<thead>
+<tr>
+  <th width="30">No</th>
+  <th>Nama & Keterangan</th>
+  <th width="80">Aksi</th>
+</tr>
+</thead>
+<tbody id="listGuru">
+<tr>
+  <td colspan="3" style="text-align:center;color:#777">
+    Memuat data...
+  </td>
+</tr>
+</tbody>
+</table>
+
+<script type="module">
+import { initializeApp } from
+"https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  serverTimestamp,
+  query,
+  orderBy,
+  onSnapshot,
+  doc,
+  updateDoc,
+  getDoc,
+  deleteDoc
+} from
+"https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+/* ===== CONFIG ===== */
+const APP_SCRIPT_URL =
+"https://script.google.com/macros/s/AKfycbwDt10ar5OQjreiB0IOuvWqXBwJt6Nxynd1m_GZgt5yntQwApMIU6NAOLIcXz-SKhq-/exec";
+
+const app = initializeApp({
+  apiKey:"AIzaSyD8SIXXPm_c-TJiaRjHbrishFtU2NICm9M",
+  authDomain:"datasiswa-c10f4.firebaseapp.com",
+  projectId:"datasiswa-c10f4"
+});
+const db = getFirestore(app);
+
+/* ===== ELEMENT ===== */
+const namaEl = document.getElementById("nama");
+const fotoEl = document.getElementById("foto");
+const ketEl = document.getElementById("keterangan");
+const btn = document.getElementById("btn");
+const notif = document.getElementById("notif");
+const previewBox = document.getElementById("previewBox");
+const previewImg = document.getElementById("previewImg");
+const listGuruEl = document.getElementById("listGuru");
+
+let fotoUrl = "";
+let editId = null;
+let dataGuru = [];
+const MAX_SIZE = 1024 * 1024; // 1 MB
+const MAX_DIMENSION = 1280;  // px
+
+
+
+
+async function compressImage(file){
+  return new Promise((resolve,reject)=>{
+    const img = new Image();
+    const reader = new FileReader();
+
+    reader.onload = e => img.src = e.target.result;
+    reader.onerror = reject;
+
+    img.onload = async ()=>{
+      let { width, height } = img;
+
+      if(width > height && width > MAX_DIMENSION){
+        height = Math.round(height * MAX_DIMENSION / width);
+        width = MAX_DIMENSION;
+      }else if(height > MAX_DIMENSION){
+        width = Math.round(width * MAX_DIMENSION / height);
+        height = MAX_DIMENSION;
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img,0,0,width,height);
+
+      let quality = 0.8;
+      let blob;
+
+      do{
+        blob = await new Promise(res =>
+          canvas.toBlob(res,"image/jpeg",quality)
+        );
+        quality -= 0.1;
+      }while(blob.size > MAX_SIZE && quality > 0.3);
+
+      resolve(new File([blob], file.name, {
+        type:"image/jpeg",
+        lastModified:Date.now()
+      }));
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ===== PREVIEW FOTO ===== */
+fotoEl.addEventListener("change", async ()=>{
+  let file = fotoEl.files[0];
+  if(!file) return;
+
+  if(!file.type.startsWith("image/")){
+    alert("File harus berupa gambar");
+    fotoEl.value="";
+    return;
+  }
+
+  file = await compressImage(file);
+
+  if(file.size > MAX_SIZE){
+    alert("Gagal mengompres gambar ke bawah 1 MB");
+    fotoEl.value="";
+    return;
+  }
+
+  // simpan file terkompres
+  fotoEl._compressedFile = file;
+
+  const r = new FileReader();
+  r.onload = ()=>{
+    previewImg.src = r.result;
+    previewBox.style.display="block";
+  };
+  r.readAsDataURL(file);
+});
+
+
+
+function toBase64(file){
+  return new Promise((res,rej)=>{
+    const r = new FileReader();
+    r.onload = ()=>res(r.result.split(",")[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+
+
+async function uploadKeDrive(file){
+  const fd=new FormData();
+  fd.append("name",file.name);
+  fd.append("mime",file.type);
+  fd.append("data",await toBase64(file));
+  const r=await fetch(APP_SCRIPT_URL,{method:"POST",body:fd});
+  return (await r.json()).url;
+}
+
+/* ===== SIMPAN ===== */
+btn.onclick=async()=>{
+  const nama=namaEl.value.trim();
+  if(!nama) return alert("Nama wajib diisi");
+
+  btn.disabled=true;
+  notif.innerHTML="⏳ Menyimpan...";
+
+  try{
+   if(fotoEl._compressedFile){
+  fotoUrl = await uploadKeDrive(fotoEl._compressedFile);
+}
+
+
+    if(editId){
+      await updateDoc(doc(db,"Guru_guru_kita",editId),{
+        nama,
+        keterangan:ketEl.value,
+        fotoUrl
+      });
+      editId=null;
+      btn.innerHTML="💾 Simpan Daftar Guru";
+    }else{
+      await addDoc(collection(db,"Guru_guru_kita"),{
+        nama,
+        keterangan:ketEl.value,
+        fotoUrl,
+        urutan:Date.now(),
+        tampil:true,
+        createdAt:serverTimestamp()
+      });
+    }
+
+    namaEl.value="";
+    ketEl.value="";
+    fotoEl.value="";
+    previewBox.style.display="none";
+    notif.innerHTML="✅ Berhasil";
+  }catch{
+    notif.innerHTML="❌ Gagal";
+  }
+  btn.disabled=false;
+};
+
+/* ===== LOAD DATA ===== */
+const q=query(
+  collection(db,"Guru_guru_kita"),
+  orderBy("urutan","asc")
+);
+
+onSnapshot(q,snap=>{
+  dataGuru=[];
+  snap.forEach(d=>dataGuru.push({id:d.id,...d.data()}));
+  render();
+});
+
+function render(){
+  if(!dataGuru.length){
+    listGuruEl.innerHTML=`<tr><td colspan="3" align="center">Kosong</td></tr>`;
+    return;
+  }
+  let h="";
+  dataGuru.forEach((x,i)=>{
+    h+=`
+    <tr>
+      <td>${i+1}</td>
+      <td><b>${x.nama}</b><br>${x.keterangan||"-"}</td>
+      <td align="center">
+        <button class="action-btn" onclick="naik('${x.id}')">⬆️</button>
+        <button class="action-btn" onclick="turun('${x.id}')">⬇️</button><br>
+        <button class="action-btn" onclick="edit('${x.id}')">✏️</button>
+        <button class="action-btn delete" onclick="hapus('${x.id}')">🗑️</button>
+      </td>
+    </tr>`;
+  });
+  listGuruEl.innerHTML=h;
+}
+
+/* ===== URUTAN ===== */
+window.naik=async(id)=>{
+  const i=dataGuru.findIndex(x=>x.id===id);
+  if(i<=0) return;
+  const a=dataGuru[i],b=dataGuru[i-1];
+  await Promise.all([
+    updateDoc(doc(db,"Guru_guru_kita",a.id),{urutan:b.urutan}),
+    updateDoc(doc(db,"Guru_guru_kita",b.id),{urutan:a.urutan})
+  ]);
+};
+
+window.turun=async(id)=>{
+  const i=dataGuru.findIndex(x=>x.id===id);
+  if(i<0||i>=dataGuru.length-1) return;
+  const a=dataGuru[i],b=dataGuru[i+1];
+  await Promise.all([
+    updateDoc(doc(db,"Guru_guru_kita",a.id),{urutan:b.urutan}),
+    updateDoc(doc(db,"Guru_guru_kita",b.id),{urutan:a.urutan})
+  ]);
+};
+
+/* ===== AKSI ===== */
+window.edit=async(id)=>{
+  const d=await getDoc(doc(db,"Guru_guru_kita",id));
+  if(!d.exists())return;
+  const x=d.data();
+  namaEl.value=x.nama;
+  ketEl.value=x.keterangan||"";
+  fotoUrl=x.fotoUrl||"";
+  editId=id;
+  btn.innerHTML="💾 Update Guru";
+  window.scrollTo({top:0,behavior:"smooth"});
+};
+
+window.hapus=async(id)=>{
+  if(confirm("Hapus data guru?")){
+    await deleteDoc(doc(db,"Guru_guru_kita",id));
+  }
+};
+</script>
+
+</body>
+</html>
