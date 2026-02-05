@@ -37,38 +37,95 @@ h2{font-size:18px;margin:4px 0 24px;font-weight:700}
 h3{font-size:18px;margin:1px 0 6px;font-weight:800}
 
 
-/* MENU */
-.menu{
+/* MENU LINK CARD */
+.menu-links{
   width:100%;
   max-width:360px;
   display:flex;
   flex-direction:column;
-  align-items:center;
+  gap:12px;
 }
 
-.menu button,
-.menu a{
-  width:100%;
+.menu-links a{
   height:56px;
-  margin-bottom:14px;
+  border-radius:14px;
   display:flex;
   align-items:center;
-  justify-content:center;
-  padding:0;
-  border-radius:14px;
+  gap:14px;
+  padding:0 18px;
   font-size:16px;
   font-weight:700;
-  border:none;
   text-decoration:none;
-  cursor:pointer;
-  color:#fff;
-  background:#0284c7;
-  box-shadow:0 6px 16px rgba(2,132,199,.35);
-  box-sizing:border-box;
+  box-shadow:0 6px 14px rgba(0,0,0,.12);
+  transition:.2s;
 }
 
+.menu-links a:active{
+  transform:scale(.97);
+}
+
+.icon{
+  font-size:22px;
+}
+
+
+/* WARNA */
+.bg-progres{background:#ede9fe;color:#6d28d9}
+.bg-rekening{background:#fee2e2;color:#dc2626}
+.bg-donasi{background:#e0f2fe;color:#0284c7}
+.bg-donatur{background:#ecfeff;color:#0e7490}
+.bg-laporan{background:#e8f5e9;color:#2e7d32}
+.bg-kegiatan{background:#fff3e0;color:#f97316}
+.bg-pesan{background:#f3e8ff;color:#7c3aed}
+.bg-guru{background:#e0f2f1;color:#0f766e}
 .menu button:active,
 .menu a:active{transform:scale(.97)}
+
+/* SAMBUTAN BUTTON */
+.btn-sambutan{
+  width:100%;
+  max-width:360px;
+  height:56px;
+  border:none;
+  border-radius:14px;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:0 18px;
+  font-size:16px;
+  font-weight:700;
+  cursor:pointer;
+  background:#e0f2fe;
+  color:#0284c7;
+  box-shadow:0 6px 14px rgba(0,0,0,.12);
+  transition:.2s;
+}
+
+
+/* JARAK ANTAR TOMBOL */
+.menu-links{
+  width:100%;
+  max-width:360px;
+  display:flex;
+  flex-direction:column;
+  gap:16px;   /* ⬅️ ini yang bikin tidak mepet */
+}
+
+/* JARAK SAMBUTAN KE MENU */
+.btn-sambutan{
+  margin-bottom:18px; /* ⬅️ beri napas */
+}
+
+.btn-sambutan:active{
+  transform:scale(.97);
+}
+
+.btn-sambutan .icon{
+  font-size:22px;
+}
+
+
+
 
 /* CARD */
 .card{
@@ -112,9 +169,10 @@ h3{font-size:18px;margin:1px 0 6px;font-weight:800}
 
 <div class="menu">
 
-<button id="sambutanBtn" onclick="tampilkanSemua()">
-  Sambutan
+<button id="sambutanBtn" class="btn-sambutan" onclick="tampilkanSemua()">
+  <span class="icon">📢</span> Sambutan
 </button>
+
 
 
 <!-- KOMITE -->
@@ -199,15 +257,41 @@ Anggota :
   </p>
 </div>
 
-<a href="progres.html">Progres Pembangunan</a>
-  <a href="Rekening.html"style="color:red;">No Rekening</a>
-<a href="input_donasi.html">Donasi</a>
-  <a href="rekap_semua.html">Daftar Donatur</a>
-<a href="laporan_keuangan.html">Laporan Keuangan</a>
-<a href="dokumentasi_sekolah.html">Kegiatan Sekolah</a>
-<a href="pesan_kesan.html">Pesan Kesan</a>
-  <a href="guru_guru_kita.html">Guru Guru Kita</a>
-    
+<div class="menu-links">
+
+<a href="progres.html" class="bg-progres">
+  <span class="icon">🏗️</span> Progres Pembangunan
+</a>
+
+<a href="Rekening.html" class="bg-rekening">
+  <span class="icon">🏦</span> No Rekening
+</a>
+
+<a href="input_donasi.html" class="bg-donasi">
+  <span class="icon">❤️</span> Donasi
+</a>
+
+<a href="rekap_semua.html" class="bg-donatur">
+  <span class="icon">📋</span> Daftar Donatur
+</a>
+
+<a href="laporan_keuangan.html" class="bg-laporan">
+  <span class="icon">📊</span> Laporan Keuangan
+</a>
+
+<a href="dokumentasi_sekolah.html" class="bg-kegiatan">
+  <span class="icon">📸</span> Kegiatan Sekolah
+</a>
+
+<a href="pesan_kesan.html" class="bg-pesan">
+  <span class="icon">💬</span> Pesan Kesan
+</a>
+
+<a href="guru_guru_kita.html" class="bg-guru">
+  <span class="icon">👨‍🏫</span> Guru Guru Kita
+</a>
+
+</div>
 
 </div>
 
