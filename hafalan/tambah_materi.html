@@ -140,8 +140,8 @@ async function loadMateri() {
         <td>${r.namaMateri}</td>
         <td>${r.nilaiMaks}</td>
         <td class="aksi">
-          <button class="edit" onclick="editMateri('${d.id}','${r.namaMateri}',${r.nilaiMaks})">✏️</button>
-          <button class="hapus" onclick="hapusMateri('${d.id}','${r.namaMateri}')">❌</button>
+   <button class="edit" onclick="editMateri('${d.id}',\`${r.namaMateri}\`,${r.nilaiMaks})">✏️</button>
+          <button class="hapus" onclick="hapusMateri('${d.id}',\`${r.namaMateri}\`)">❌</button>
         </td>
       </tr>
     `;
