@@ -23,10 +23,49 @@ th { background:#e8f5e9; }
 .info { color:#1565c0; font-weight:bold; margin-top:10px; }
 </style>
 </head>
+  </div>
+</div>
 <body>
 
-<div class="card">
+    <div id="popupKode" style="
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.6);
+display:flex;
+align-items:center;
+justify-content:center;
+">
+
+  <div style="
+  background:white;
+  padding:30px;
+  width:300px;
+  border-radius:8px;
+  text-align:center;
+  ">
+
+    <h3>Masukkan Kode Sekolah</h3>
+
+    <input type="text" id="kodeSekolah" placeholder="Contoh: sb"
+      style="width:100%; padding:8px; margin-top:10px;">
+
+    <button onclick="cekKodeSekolah()"
+      style="width:100%; margin-top:10px;">Masuk</button>
+
+    <div id="kodeInfo" style="color:red; margin-top:10px;"></div>
+
+  </div>
+</div>
+
+<div id="halamanUtama" style="display:none;">
+  <div class="card">
 <h2 align="center">Pendaftaran Hafalan Siswa</h2>
+
+<div id="kodeInfo" class="notice"></div>
+
 
 <!-- IDENTITAS -->
 <label>Lembaga</label>
@@ -91,6 +130,13 @@ const materiEl = document.getElementById("materi");
 const keranjangEl = document.getElementById("keranjang");
 const antrianEl = document.getElementById("antrian");
 const infoEl = document.getElementById("info");
+const kodeEl = document.getElementById("kodeSekolah");
+const kodeInfo = document.getElementById("kodeInfo");
+const savedKode = localStorage.getItem("kodeSekolah");
+
+if (savedKode) {
+  kodeEl.value = savedKode; // isi otomatis ke input
+}
 
 let keranjang = [];
 let antrianMateri = {}; // materiId -> true
@@ -110,7 +156,7 @@ async function loadLembaga() {
   lembagaEl.innerHTML = "<option value=''>-- Pilih --</option>";
   snap.forEach(d => lembagaEl.innerHTML += `<option value="${d.id}">${d.data().nama}</option>`);
 }
-loadLembaga();
+
 
 lembagaEl.onchange = async () => {
   if (identitasTerkunci) return;
@@ -145,6 +191,48 @@ async function loadMapel() {
   snap.forEach(d => mapelEl.innerHTML += `<option value="${d.id}">${d.data().nama}</option>`);
 }
 loadMapel();
+
+
+window.cekKodeSekolah = async () => {
+
+  const kode = kodeEl.value.trim().toLowerCase();
+
+  if (!kode) {
+    kodeInfo.innerText = "Masukkan kode sekolah";
+    return;
+  }
+
+  const snap = await getDocs(
+    query(
+      collection(db,"lembaga"),
+      where("kode","==",kode),
+      where("aktif","==",true)
+    )
+  );
+
+  if (snap.empty) {
+    kodeInfo.innerText = "Kode tidak ditemukan atau tidak aktif";
+    return;
+  }
+
+  const doc = snap.docs[0];
+
+  // Set dropdown lembaga otomatis
+  lembagaEl.innerHTML = `
+    <option value="${doc.id}">
+      ${doc.data().nama}
+    </option>`;
+
+  lembagaEl.disabled = true; // kunci lembaga
+  kodeEl.disabled = true; // kunci kode
+  kodeInfo.innerText = "Lembaga ditemukan ✔";
+  lembagaEl.dispatchEvent(new Event("change"));
+
+  localStorage.setItem("kodeSekolah", kode);
+
+document.getElementById("popupKode").style.display = "none";
+document.getElementById("halamanUtama").style.display = "block";
+};
 
 /* ================= CEK ANTRIAN ================= */
 async function cekAntrian() {
