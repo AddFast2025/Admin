@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Input Bahan Bacaan</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body { font-family: Arial; background:#f4f6f8; padding:20px; }
+.card { max-width:900px; margin:auto; background:#fff; padding:20px; border-radius:8px; }
+
+label { font-weight:bold; display:block; margin-top:10px; }
+select, textarea, button { width:100%; padding:8px; margin-top:5px; }
+
+textarea { min-height:150px; font-family:monospace; }
+
+button { background:#2e7d32; color:white; border:none; cursor:pointer; }
+button.edit { background:#1565c0; }
+button.hapus { background:#c62828; }
+
+table { width:100%; border-collapse:collapse; margin-top:15px; }
+th,td { border:1px solid #ddd; padding:6px; text-align:center; }
+th { background:#e8f5e9; }
+</style>
+</head>
+<body>
+
+<div class="card">
+<h2 align="center">Input Bahan Bacaan</h2>
+
+<label>Pilih Mapel</label>
+<select id="mapel"></select>
+
+<label>Pilih Materi</label>
+<select id="materi"></select>
+
+<label>Bahan Bacaan</label>
+<textarea id="isiBacaan" placeholder="Tulis bahan bacaan di sini..."></textarea>
+
+<button onclick="simpanBacaan()">Simpan</button>
+
+<hr>
+
+<h3>Daftar Bahan Bacaan</h3>
+<div id="listBacaan">Memuat...</div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getFirestore, collection, addDoc, getDocs,
+  query, where, deleteDoc, doc, updateDoc
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "datasiswa-c10f4.firebaseapp.com",
+  projectId: "datasiswa-c10f4"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const mapelEl = document.getElementById("mapel");
+const materiEl = document.getElementById("materi");
+const isiEl = document.getElementById("isiBacaan");
+const listEl = document.getElementById("listBacaan");
+
+let editId = null;
+
+/* ================= LOAD MAPEL ================= */
+async function loadMapel(){
+  const snap = await getDocs(collection(db,"mapel"));
+  mapelEl.innerHTML = "<option value=''>-- Pilih --</option>";
+  snap.forEach(d=>{
+    mapelEl.innerHTML += `<option value="${d.id}">${d.data().nama}</option>`;
+  });
+}
+loadMapel();
+
+/* ================= LOAD MATERI ================= */
+mapelEl.addEventListener("change", async ()=>{
+  materiEl.innerHTML = "<option value=''>-- Pilih Materi --</option>";
+  if(!mapelEl.value) return;
+
+  const snap = await getDocs(
+    query(collection(db,"materi_hafalan"),
+    where("mapelId","==",mapelEl.value))
+  );
+
+  snap.forEach(d=>{
+    const r=d.data();
+    materiEl.innerHTML +=
+      `<option value="${d.id}" data-nama="${r.namaMateri}">
+        ${r.namaMateri}
+      </option>`;
+  });
+
+  loadBacaan();
+});
+
+/* ================= SIMPAN ================= */
+window.simpanBacaan = async ()=>{
+
+  const materiId = materiEl.value;
+  const isi = isiEl.value.trim();
+
+  if(!mapelEl.value || !materiId || !isi){
+    alert("Lengkapi mapel, materi, dan bacaan");
+    return;
+  }
+
+  const mapelNama = mapelEl.options[mapelEl.selectedIndex].text;
+  const materiNama = materiEl.selectedOptions[0].dataset.nama;
+
+  if(editId){
+    await updateDoc(doc(db,"bahan_bacaan",editId),{
+      isiBacaan: isi
+    });
+    editId = null;
+  }else{
+    await addDoc(collection(db,"bahan_bacaan"),{
+      mapelId: mapelEl.value,
+      mapelNama,
+      materiId,
+      namaMateri: materiNama,
+      isiBacaan: isi,
+      dibuat: new Date()
+    });
+  }
+
+  isiEl.value="";
+  loadBacaan();
+};
+
+/* ================= LOAD BACAAN ================= */
+async function loadBacaan(){
+
+  if(!mapelEl.value){
+    listEl.innerHTML="Pilih mapel terlebih dahulu";
+    return;
+  }
+
+  const snap = await getDocs(
+    query(collection(db,"bahan_bacaan"),
+    where("mapelId","==",mapelEl.value))
+  );
+
+  if(snap.empty){
+    listEl.innerHTML="Belum ada bacaan";
+    return;
+  }
+
+  let html=`<table>
+  <tr><th>No</th><th>Materi</th><th>Bacaan</th><th>Aksi</th></tr>`;
+  let no=1;
+
+  snap.forEach(d=>{
+    const r=d.data();
+    html+=`
+    <tr>
+      <td>${no++}</td>
+      <td>${r.namaMateri}</td>
+      <td style="text-align:left">${r.isiBacaan}</td>
+      <td>
+        <button class="edit"
+          onclick="editBacaan('${d.id}',\`${r.isiBacaan}\`)">✏️</button>
+        <button class="hapus"
+          onclick="hapusBacaan('${d.id}')">❌</button>
+      </td>
+    </tr>`;
+  });
+
+  html+="</table>";
+  listEl.innerHTML=html;
+}
+
+/* ================= EDIT ================= */
+window.editBacaan = (id, isi)=>{
+  editId = id;
+  isiEl.value = isi;
+};
+
+/* ================= DELETE ================= */
+window.hapusBacaan = async (id)=>{
+  if(!confirm("Hapus bacaan?")) return;
+  await deleteDoc(doc(db,"bahan_bacaan",id));
+  loadBacaan();
+};
+
+</script>
+</body>
+</html>
