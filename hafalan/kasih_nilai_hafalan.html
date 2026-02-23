@@ -33,9 +33,49 @@ th { background:#e8f5e9; }
 .notice { color:#c62828; font-weight:bold; margin-top:10px; }
 </style>
 </head>
-<body>
 
-<div class="card">
+
+<body>
+<div id="popupKode" style="
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.6);
+display:flex;
+align-items:center;
+justify-content:center;
+z-index:999;
+">
+
+  <div style="
+  background:white;
+  padding:30px;
+  width:320px;
+  border-radius:8px;
+  text-align:center;
+  ">
+
+    <h3>Masukkan Kode Sekolah</h3>
+
+    <input type="text" id="kodeSekolah"
+      placeholder="Contoh: sb"
+      style="width:100%; padding:8px; margin-top:10px;">
+
+    <button onclick="cekKodeSekolah()"
+      style="width:100%; margin-top:10px;">Masuk</button>
+
+    <div id="kodeInfo"
+      style="color:red; margin-top:10px;"></div>
+
+  </div>
+</div>
+
+
+<div id="halamanUtama" style="display:none;">
+  <div class="card">
+
 <h2 align="center">Penilaian Hafalan Siswa</h2>
 
 <!-- FILTER -->
@@ -117,6 +157,57 @@ const rombelEl = document.getElementById("rombel");
 const mapelEl = document.getElementById("mapel");
 const listEl = document.getElementById("list");
 const panel = document.getElementById("panelNilai");
+const kodeEl = document.getElementById("kodeSekolah");
+const kodeInfo = document.getElementById("kodeInfo");
+
+
+window.cekKodeSekolah = async () => {
+
+  const kode = kodeEl.value.trim();
+
+  if (!kode) {
+    kodeInfo.innerText = "Masukkan kode sekolah";
+    return;
+  }
+
+  const snap = await getDocs(
+    query(
+      collection(db,"lembaga"),
+      where("kode","==",kode),
+      where("aktif","==",true)
+    )
+  );
+
+  if (snap.empty) {
+    kodeInfo.innerText = "Kode tidak ditemukan";
+    return;
+  }
+
+  const docData = snap.docs[0];
+
+  lembagaEl.innerHTML =
+    `<option value="${docData.id}">
+      ${docData.data().nama}
+    </option>`;
+
+  lembagaEl.disabled = true;
+
+  localStorage.setItem("kodeSekolah", kode);
+
+  lembagaEl.dispatchEvent(new Event("change"));
+
+  document.getElementById("popupKode").style.display = "none";
+  document.getElementById("halamanUtama").style.display = "block";
+};
+
+// ⬇ PINDAHKAN KE SINI
+const savedKode = localStorage.getItem("kodeSekolah");
+
+if (savedKode) {
+  kodeEl.value = savedKode;
+  
+}
+
 
 let aktifDocId = null;
 let aktifNilaiMaks = 0;
@@ -127,7 +218,7 @@ async function loadLembaga() {
   lembagaEl.innerHTML = "<option value=''>-- Pilih Lembaga --</option>";
   snap.forEach(d => lembagaEl.innerHTML += `<option value="${d.id}">${d.data().nama}</option>`);
 }
-loadLembaga();
+
 
 lembagaEl.onchange = async () => {
   kelasEl.innerHTML = "<option value=''>Semua Kelas</option>";
@@ -155,6 +246,51 @@ async function loadMapel() {
   snap.forEach(d => mapelEl.innerHTML += `<option value="${d.id}">${d.data().nama}</option>`);
 }
 loadMapel();
+
+window.cekKodeSekolah = async () => {
+
+  const kode = kodeEl.value.trim();
+
+  if (!kode) {
+    kodeInfo.innerText = "Masukkan kode sekolah";
+    return;
+  }
+
+  const snap = await getDocs(
+    query(
+      collection(db,"lembaga"),
+      where("kode","==",kode),
+      where("aktif","==",true)
+    )
+  );
+
+  if (snap.empty) {
+    kodeInfo.innerText = "Kode tidak ditemukan";
+    return;
+  }
+
+  const docData = snap.docs[0];
+
+  // isi dropdown lembaga otomatis
+  lembagaEl.innerHTML =
+    `<option value="${docData.id}">
+      ${docData.data().nama}
+    </option>`;
+
+  lembagaEl.disabled = true;
+
+  // simpan ke localStorage
+  localStorage.setItem("kodeSekolah", kode);
+
+  // trigger load kelas
+  lembagaEl.dispatchEvent(new Event("change"));
+
+  // tampilkan halaman utama
+  document.getElementById("popupKode").style.display = "none";
+  document.getElementById("halamanUtama").style.display = "block";
+};
+
+
 
 /* LOAD ANTRIAN */
 window.loadAntrian = async () => {
