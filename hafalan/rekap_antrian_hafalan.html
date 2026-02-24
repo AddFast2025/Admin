@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Rekap Antrian Hafalan</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{
+  font-family: Arial, sans-serif;
+  background:#f4f6f8;
+  padding:20px;
+}
+.card{
+  max-width:900px;
+  margin:auto;
+  background:#fff;
+  padding:20px;
+  border-radius:8px;
+}
+h2{
+  text-align:center;
+}
+.info-sekolah{
+  text-align:center;
+  font-weight:bold;
+  color:#1565c0;
+  margin-bottom:20px;
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+th,td{
+  border:1px solid #ddd;
+  padding:8px;
+  text-align:center;
+}
+th{
+  background:#e8f5e9;
+}
+button{
+  padding:8px;
+  width:100%;
+  background:#2e7d32;
+  color:white;
+  border:none;
+  cursor:pointer;
+  margin-top:10px;
+}
+th.no, td.no{
+  width:30px;
+  font-size:13px;
+}
+
+th.jumlah, td.jumlah{
+  width:40px;
+  font-size:13px;
+}
+
+th.mapel, td.mapel{
+  text-align:left;
+  padding-left:12px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- POPUP INPUT KODE -->
+<div id="popupKode" style="
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.6);
+display:none;
+align-items:center;
+justify-content:center;
+">
+
+  <div style="
+  background:white;
+  padding:30px;
+  width:300px;
+  border-radius:8px;
+  text-align:center;
+  ">
+    <h3>Masukkan Kode Sekolah</h3>
+    <input type="text" id="kodeInput" placeholder=""
+      style="width:100%; padding:8px; margin-top:10px;">
+    <button onclick="cekKode()">Masuk</button>
+    <div id="kodeInfo" style="color:red; margin-top:10px;"></div>
+  </div>
+</div>
+
+<!-- HALAMAN REKAP -->
+<div id="halamanUtama" style="display:none;">
+  <div class="card">
+    <h2>📊 Rekap Antrian Hafalan</h2>
+    <div id="namaSekolah" class="info-sekolah"></div>
+
+
+
+
+
+
+
+<table>
+  <thead>
+    <tr>
+      <th class="no">No</th>
+      <th class="mapel">Mapel</th>
+      <th class="jumlah">Jumlah</th>
+    </tr>
+  </thead>
+  <tbody id="tabelRekap">
+    <tr><td colspan="3">Memuat data...</td></tr>
+  </tbody>
+</table>
+
+
+
+
+
+
+    
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+
+import {
+  getFirestore, collection, getDocs, query, where,
+  deleteDoc, doc
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+
+/* FIREBASE */
+const firebaseConfig = {
+  apiKey: "AIzaSyD8SIXXPm_c-TJiaRjHbrishFtU2NICm9M",
+  authDomain: "datasiswa-c10f4.firebaseapp.com",
+  projectId: "datasiswa-c10f4"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const popup = document.getElementById("popupKode");
+const halamanUtama = document.getElementById("halamanUtama");
+const namaSekolahEl = document.getElementById("namaSekolah");
+const tabelRekap = document.getElementById("tabelRekap");
+const kodeInput = document.getElementById("kodeInput");
+const kodeInfo = document.getElementById("kodeInfo");
+
+/* CEK LOCAL STORAGE */
+let kodeSekolah = localStorage.getItem("kodeSekolah");
+
+if(!kodeSekolah){
+  popup.style.display = "flex";
+}else{
+  loadSekolahDanRekap(kodeSekolah);
+}
+
+/* CEK KODE */
+window.cekKode = async function(){
+
+  const kode = kodeInput.value.trim().toLowerCase();
+
+  if(!kode){
+    kodeInfo.innerText = "Masukkan kode sekolah";
+    return;
+  }
+
+  const snap = await getDocs(
+    query(
+      collection(db,"lembaga"),
+      where("kode","==",kode),
+      where("aktif","==",true)
+    )
+  );
+
+  if(snap.empty){
+    kodeInfo.innerText = "Kode tidak ditemukan / tidak aktif";
+    return;
+  }
+
+  localStorage.setItem("kodeSekolah", kode);
+  popup.style.display = "none";
+  loadSekolahDanRekap(kode);
+}
+
+/* LOAD DATA */
+async function loadSekolahDanRekap(kode){
+
+  const lembagaSnap = await getDocs(
+    query(
+      collection(db,"lembaga"),
+      where("kode","==",kode),
+      where("aktif","==",true)
+    )
+  );
+
+  if(lembagaSnap.empty){
+    namaSekolahEl.innerText = "Sekolah tidak ditemukan";
+    return;
+  }
+
+  const lembagaDoc = lembagaSnap.docs[0];
+  const lembagaId = lembagaDoc.id;
+  const lembagaNama = lembagaDoc.data().nama;
+
+  namaSekolahEl.innerText = lembagaNama;
+  halamanUtama.style.display = "block";
+// Ambil semua antrian status daftar
+const antrianSnap = await getDocs(
+  query(
+    collection(db,"hafalan_daftar"),
+    where("lembagaId","==",lembagaId),
+    where("status","==","daftar")
+  )
+);
+
+if(antrianSnap.empty){
+  tabelRekap.innerHTML = `
+    <tr>
+      <td colspan="3">Tidak ada antrian</td>
+    </tr>`;
+  return;
+}
+
+// Format rekap:
+// {
+//   "Bahasa Arab": {
+//       total: 4,
+//       kelas: { "1":2, "2":0, ... }
+//   }
+// }
+
+const rekap = {};
+
+antrianSnap.forEach(doc=>{
+  const data = doc.data();
+  const mapel = data.mapelNama;
+  const kelas = data.kelasNama; // misal "1", "2", dst
+
+  if(!rekap[mapel]){
+    rekap[mapel] = {
+      total: 0,
+      kelas: {}
+    };
+  }
+
+  rekap[mapel].total++;
+
+  if(!rekap[mapel].kelas[kelas]){
+    rekap[mapel].kelas[kelas] = 0;
+  }
+
+  rekap[mapel].kelas[kelas]++;
+});
+
+// Tampilkan tabel
+tabelRekap.innerHTML = "";
+let no = 1;
+
+for(const mapel in rekap){
+
+  let rincian = "Kls ";
+
+  // tampilkan kelas 1–6
+  for(let i=1; i<=6; i++){
+    const jumlah = rekap[mapel].kelas[i] || 0;
+    rincian += `(${i}=${jumlah}) `;
+  }
+
+  tabelRekap.innerHTML += `
+  <tr>
+    <td class="no">${no++}</td>
+    <td class="mapel">
+      <b>${mapel}</b><br>
+      <span style="font-size:13px; color:#555;">
+        ${rincian}
+      </span>
+    </td>
+    <td class="jumlah">
+  <b>${rekap[mapel].total}</b><br>
+  <button 
+    style="margin-top:5px; padding:3px 6px; font-size:11px; background:#c62828; color:white; border:none; cursor:pointer;"
+    onclick="resetMapel('${mapel}')">
+    Reset
+  </button>
+</td>
+  </tr>`;
+
+    
+}
+window.resetMapel = async function(mapelNama){
+
+  const yakin = confirm("Yakin hapus semua antrian mapel " + mapelNama + " ?");
+  if(!yakin) return;
+
+  const kode = localStorage.getItem("kodeSekolah");
+
+  const lembagaSnap = await getDocs(
+    query(
+      collection(db,"lembaga"),
+      where("kode","==",kode),
+      where("aktif","==",true)
+    )
+  );
+
+  if(lembagaSnap.empty) return;
+
+  const lembagaId = lembagaSnap.docs[0].id;
+
+  const snap = await getDocs(
+    query(
+      collection(db,"hafalan_daftar"),
+      where("lembagaId","==",lembagaId),
+      where("mapelNama","==",mapelNama),
+      where("status","==","daftar")
+    )
+  );
+
+  for(const d of snap.docs){
+    await deleteDoc(doc(db,"hafalan_daftar", d.id));
+  }
+
+  alert("Antrian berhasil dihapus");
+
+  loadSekolahDanRekap(kode);
+}
+
+}
+
+</script>
+
+</body>
+</html>
