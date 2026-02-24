@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal Hafalan</title>
+
+<style>
+body{
+  margin:0;
+  font-family:system-ui, Arial, sans-serif;
+  text-align:center;
+  color:#0f172a;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  min-height:100vh;
+  padding:20px;
+  background:linear-gradient(160deg,#ffe0b2,#ffb74d,#ff9800);
+}
+
+h2{font-size:18px;margin:4px 0 24px;font-weight:800}
+
+.menu-links{
+  width:100%;
+  max-width:360px;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+
+.menu-links a{
+  height:56px;
+  border-radius:14px;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:0 18px;
+  font-size:16px;
+  font-weight:700;
+  text-decoration:none;
+  box-shadow:0 6px 14px rgba(0,0,0,.12);
+  transition:.2s;
+}
+
+.menu-links a:active{
+  transform:scale(.97);
+}
+
+.icon{
+  font-size:22px;
+}
+
+/* WARNA BARU */
+.bg-materi{background:#ede9fe;color:#6d28d9}
+.bg-daftar{background:#e0f2fe;color:#0284c7}
+.bg-antrian{background:#fff3e0;color:#f97316}
+.bg-nilai{background:#e8f5e9;color:#2e7d32}
+.bg-bacaan{background:#f3e8ff;color:#7c3aed}
+.bg-rekap{background:#e0f2f1;color:#0f766e}
+
+</style>
+</head>
+
+<body>
+
+<h2>PORTAL HAFALAN</h2>
+
+<div class="menu-links">
+
+<a href="pelajari_bacaan.html" class="bg-materi">
+  <span class="icon">📖</span> Pelajari Materi Hafalan
+</a>
+
+<a href="mendaftar_hafalan.html" class="bg-daftar">
+  <span class="icon">📝</span> Pendaftaran Hafalan
+</a>
+
+<a href="rekap_antrian_hafalan.html" class="bg-antrian">
+  <span class="icon">📋</span> Rekap Antrian Hafalan
+</a>
+
+<a href="kasih_nilai_hafalan.html" class="bg-nilai">
+  <span class="icon">⭐</span> Beri Nilai Hafalan
+</a>
+
+<a href="bahan_bacaan.html" class="bg-bacaan">
+  <span class="icon">✍️</span> Input Bacaan
+</a>
+
+<a href="rekap_nilai_hafalan.html" class="bg-rekap">
+  <span class="icon">📊</span> Rekap Nilai Hafalan
+</a>
+
+</div>
+
+</body>
+</html>
