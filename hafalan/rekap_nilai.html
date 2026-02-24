@@ -193,15 +193,19 @@ window.tampilkan = async () => {
       if (tgl.getMonth() != bulan) return;
     }
 
-    const key = r.namaSiswa + "_" + r.kelasNama;
+const kelasGabung = r.kelasNama + r.rombelNama;
 
-    if (!rekap[key]) {
-      rekap[key] = {
-        kelas: r.kelasNama,
-        nama: r.namaSiswa,
-        total: 0
-      };
-    }
+const key = r.namaSiswa + "_" + kelasGabung;
+
+if (!rekap[key]) {
+  rekap[key] = {
+    kelas: kelasGabung,   // 🔥 sekarang 1A, 2B, dst
+    nama: r.namaSiswa,
+    total: 0
+  };
+}
+
+
 
     rekap[key].total += Number(r.nilaiPeroleh);
   });
