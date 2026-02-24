@@ -107,6 +107,41 @@ let lembagaNama = "";
 
 const kelasEl = document.getElementById("kelas");
 const rombelEl = document.getElementById("rombel");
+const bulanEl = document.getElementById("bulan");
+const tabelEl = document.getElementById("tabel");
+
+/* ================= RESET TABEL JIKA FILTER BERUBAH ================= */
+
+function kosongkanTabel(){
+  tabelEl.innerHTML = "";
+}
+
+// Jika bulan berubah
+bulanEl.onchange = kosongkanTabel;
+
+// Jika kelas berubah
+kelasEl.onchange = async () => {
+
+  kosongkanTabel();   // 🔥 kosongkan dulu tabel
+
+  rombelEl.innerHTML = "<option value=''>Semua Rombel</option>";
+
+  if (!kelasEl.value) return;
+
+  const snap = await getDocs(
+    query(collection(db,"rombel"),
+    where("kelasId","==",kelasEl.value))
+  );
+
+  snap.forEach(d=>{
+    rombelEl.innerHTML += `<option value="${d.id}">${d.data().nama}</option>`;
+  });
+};
+
+// Jika rombel berubah
+rombelEl.onchange = kosongkanTabel;
+
+
 
 /* ================= CEK KODE ================= */
 window.cekKode = async () => {
