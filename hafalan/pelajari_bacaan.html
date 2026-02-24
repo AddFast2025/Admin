@@ -136,19 +136,19 @@ materiEl.addEventListener("change", async ()=>{
     isiBox.innerHTML = "<i>Belum ada bahan bacaan untuk materi ini.</i>";
     return;
   }
-
- snap.forEach(d=>{
+snap.forEach(d=>{
 
   let isi = d.data().isiBacaan;
 
-  // Ubah link biasa menjadi link yang buka tab baru
+  // Ubah semua URL menjadi simbol 🔗 Link
   isi = isi.replace(
     /(https?:\/\/[^\s]+)/g,
-    '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
+    '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:#1565c0; font-weight:bold; text-decoration:none;">🔗 Link</a>'
   );
 
   isiBox.innerHTML = isi;
 });
+
 
 });
 </script>
