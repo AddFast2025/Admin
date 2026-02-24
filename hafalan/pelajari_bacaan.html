@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Bahan Bacaan Hafalan</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background:#f4f6f8;
+  padding:20px;
+}
+
+.card {
+  max-width:800px;
+  margin:auto;
+  background:#fff;
+  padding:25px;
+  border-radius:10px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.1);
+}
+
+h2 {
+  text-align:center;
+  color:#2e7d32;
+}
+
+label {
+  font-weight:bold;
+  display:block;
+  margin-top:15px;
+}
+
+select {
+  width:100%;
+  padding:8px;
+  margin-top:5px;
+}
+
+.bacaan-box {
+  margin-top:20px;
+  padding:20px;
+  background:#e8f5e9;
+  border-radius:8px;
+  min-height:150px;
+  white-space:pre-wrap;
+  line-height:1.6;
+}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h2>Bahan Bacaan Hafalan</h2>
+
+  <label>Pilih Mapel</label>
+  <select id="mapel"></select>
+
+  <label>Pilih Materi</label>
+  <select id="materi">
+    <option value="">-- Pilih Materi --</option>
+  </select>
+
+  <div class="bacaan-box" id="isiBacaan">
+    Pilih materi untuk melihat bacaan...
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getFirestore, collection, getDocs,
+  query, where
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "datasiswa-c10f4.firebaseapp.com",
+  projectId: "datasiswa-c10f4"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const mapelEl = document.getElementById("mapel");
+const materiEl = document.getElementById("materi");
+const isiBox = document.getElementById("isiBacaan");
+
+/* ================= LOAD MAPEL ================= */
+async function loadMapel(){
+  const snap = await getDocs(collection(db,"mapel"));
+  mapelEl.innerHTML = "<option value=''>-- Pilih Mapel --</option>";
+  snap.forEach(d=>{
+    mapelEl.innerHTML += `<option value="${d.id}">${d.data().nama}</option>`;
+  });
+}
+loadMapel();
+
+/* ================= LOAD MATERI ================= */
+mapelEl.addEventListener("change", async ()=>{
+
+  materiEl.innerHTML = "<option value=''>-- Pilih Materi --</option>";
+  isiBox.innerHTML = "Pilih materi untuk melihat bacaan...";
+
+  if(!mapelEl.value) return;
+
+  const snap = await getDocs(
+    query(collection(db,"materi_hafalan"),
+    where("mapelId","==",mapelEl.value))
+  );
+
+  snap.forEach(d=>{
+    const r=d.data();
+    materiEl.innerHTML +=
+      `<option value="${d.id}">
+        ${r.namaMateri}
+      </option>`;
+  });
+});
+
+/* ================= TAMPILKAN BACAAN ================= */
+materiEl.addEventListener("change", async ()=>{
+
+  if(!materiEl.value){
+    isiBox.innerHTML = "Pilih materi untuk melihat bacaan...";
+    return;
+  }
+
+  const snap = await getDocs(
+    query(collection(db,"bahan_bacaan"),
+    where("materiId","==",materiEl.value))
+  );
+
+  if(snap.empty){
+    isiBox.innerHTML = "<i>Belum ada bahan bacaan untuk materi ini.</i>";
+    return;
+  }
+
+ snap.forEach(d=>{
+
+  let isi = d.data().isiBacaan;
+
+  // Ubah link biasa menjadi link yang buka tab baru
+  isi = isi.replace(
+    /(https?:\/\/[^\s]+)/g,
+    '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
+  );
+
+  isiBox.innerHTML = isi;
+});
+
+});
+</script>
+
+</body>
+</html>
