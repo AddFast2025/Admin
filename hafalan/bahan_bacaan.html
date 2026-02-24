@@ -37,7 +37,14 @@ th { background:#e8f5e9; }
 <label>Bahan Bacaan</label>
 <textarea id="isiBacaan" placeholder="Tulis bahan bacaan di sini..."></textarea>
 
-<button onclick="simpanBacaan()">Simpan</button>
+<div style="display:flex; justify-content:space-between; margin-top:15px;">
+  <button type="button" onclick="batalInput()" 
+    style="background:#757575;">Cancel</button>
+
+  <button type="button" onclick="simpanBacaan()">
+    Simpan
+  </button>
+</div>
 
 <hr>
 
@@ -80,25 +87,64 @@ async function loadMapel(){
 loadMapel();
 
 /* ================= LOAD MATERI ================= */
+
 mapelEl.addEventListener("change", async ()=>{
   materiEl.innerHTML = "<option value=''>-- Pilih Materi --</option>";
   if(!mapelEl.value) return;
 
-  const snap = await getDocs(
+  // Ambil semua materi
+  const materiSnap = await getDocs(
     query(collection(db,"materi_hafalan"),
     where("mapelId","==",mapelEl.value))
   );
 
-  snap.forEach(d=>{
-    const r=d.data();
-    materiEl.innerHTML +=
-      `<option value="${d.id}" data-nama="${r.namaMateri}">
-        ${r.namaMateri}
-      </option>`;
+  // Ambil semua bacaan untuk mapel ini
+  const bacaanSnap = await getDocs(
+    query(collection(db,"bahan_bacaan"),
+    where("mapelId","==",mapelEl.value))
+  );
+
+  // Buat set materi yang sudah ada bacaan
+  let sudahAda = new Set();
+  bacaanSnap.forEach(d=>{
+    sudahAda.add(d.data().materiId);
+  });
+
+  // Tampilkan hanya materi yang BELUM ada bacaan
+  materiSnap.forEach(d=>{
+    const r = d.data();
+
+    if(!sudahAda.has(d.id)){  // hanya yang belum ada bacaan
+      materiEl.innerHTML +=
+        `<option value="${d.id}" data-nama="${r.namaMateri}">
+          ${r.namaMateri}
+        </option>`;
+    }
   });
 
   loadBacaan();
 });
+
+
+
+
+
+
+
+window.batalInput = ()=>{
+
+  // Kosongkan pilihan materi
+  materiEl.value = "";
+
+  // Kosongkan textarea
+  isiEl.value = "";
+
+  // Keluar dari mode edit
+  editId = null;
+
+};
+
+
 
 /* ================= SIMPAN ================= */
 window.simpanBacaan = async ()=>{
@@ -134,6 +180,18 @@ window.simpanBacaan = async ()=>{
   loadBacaan();
 };
 
+function batasiKata(teks, maxKata = 15){
+  if(!teks) return "";
+
+  const kataArray = teks.trim().split(/\s+/);
+
+  if(kataArray.length <= maxKata){
+    return teks;
+  }
+
+  return kataArray.slice(0, maxKata).join(" ") + ".......";
+}
+/* ================= LOAD BACAAN ================= */
 /* ================= LOAD BACAAN ================= */
 async function loadBacaan(){
 
@@ -142,32 +200,61 @@ async function loadBacaan(){
     return;
   }
 
-  const snap = await getDocs(
+  // 1️⃣ Ambil semua materi berdasarkan mapel
+  const materiSnap = await getDocs(
+    query(collection(db,"materi_hafalan"),
+    where("mapelId","==",mapelEl.value))
+  );
+
+  if(materiSnap.empty){
+    listEl.innerHTML="Belum ada materi";
+    return;
+  }
+
+  // 2️⃣ Ambil semua bacaan berdasarkan mapel
+  const bacaanSnap = await getDocs(
     query(collection(db,"bahan_bacaan"),
     where("mapelId","==",mapelEl.value))
   );
 
-  if(snap.empty){
-    listEl.innerHTML="Belum ada bacaan";
-    return;
-  }
+  // 3️⃣ Buat map materiId -> data bacaan
+  let bacaanMap = {};
+  bacaanSnap.forEach(d=>{
+    bacaanMap[d.data().materiId] = {
+      id: d.id,
+      isi: d.data().isiBacaan
+    };
+  });
 
+  // 4️⃣ Bangun tabel
   let html=`<table>
   <tr><th>No</th><th>Materi</th><th>Bacaan</th><th>Aksi</th></tr>`;
+
   let no=1;
 
-  snap.forEach(d=>{
+  materiSnap.forEach(d=>{
     const r=d.data();
+    const bacaan = bacaanMap[d.id];
+    
+const isiFull = bacaan ? bacaan.isi : "";
+const isi = batasiKata(isiFull, 15);
     html+=`
     <tr>
       <td>${no++}</td>
       <td>${r.namaMateri}</td>
-      <td style="text-align:left">${r.isiBacaan}</td>
+      <td style="text-align:left">${isi || "-"}</td>
       <td>
-        <button class="edit"
-          onclick="editBacaan('${d.id}',\`${r.isiBacaan}\`)">✏️</button>
-        <button class="hapus"
-          onclick="hapusBacaan('${d.id}')">❌</button>
+        ${bacaan ? `
+          <button class="edit"
+            onclick="editBacaan('${bacaan.id}','${d.id}',\`${isiFull}\`)">✏️</button>
+          <button class="hapus"
+            onclick="hapusBacaan('${bacaan.id}')">❌</button>
+        ` : `
+          <button onclick="
+            document.getElementById('materi').value='${d.id}';
+            document.getElementById('isiBacaan').focus();
+          ">➕ Isi</button>
+        `}
       </td>
     </tr>`;
   });
@@ -177,9 +264,33 @@ async function loadBacaan(){
 }
 
 /* ================= EDIT ================= */
-window.editBacaan = (id, isi)=>{
+
+
+window.editBacaan = async (id, materiId, isi)=>{
+
   editId = id;
+
+  // Cek apakah materi ada di dropdown
+  if(!materiEl.querySelector(`option[value="${materiId}"]`)){
+
+    // Ambil nama materi dari Firestore
+    const materiSnap = await getDocs(
+      query(collection(db,"materi_hafalan"),
+      where("__name__","==",materiId))
+    );
+
+    materiSnap.forEach(d=>{
+      const r = d.data();
+      materiEl.innerHTML +=
+        `<option value="${d.id}" data-nama="${r.namaMateri}">
+          ${r.namaMateri}
+        </option>`;
+    });
+  }
+
+  materiEl.value = materiId;
   isiEl.value = isi;
+  isiEl.focus();
 };
 
 /* ================= DELETE ================= */
