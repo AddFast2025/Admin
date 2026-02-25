@@ -157,6 +157,7 @@ let antrianMateri = {}; // materiId -> true
 let jumlahAntrian = 0;
 let identitasTerkunci = false;
 const MAX_KERANJANG = 5;
+const MAX_ANTRIAN_MAPEL = 20;
 
 /* ================= UTIL ================= */
 function lockIdentitas() {
@@ -203,11 +204,41 @@ siswaEl.onchange = async () => {
 
 /* MAPEL */
 async function loadMapel() {
-  const snap = await getDocs(collection(db,"mapel"));
+
   mapelEl.innerHTML = "<option value=''>-- Pilih --</option>";
-  snap.forEach(d => mapelEl.innerHTML += `<option value="${d.id}">${d.data().nama}</option>`);
+
+  const snapMapel = await getDocs(collection(db,"mapel"));
+
+  for (const docSnap of snapMapel.docs) {
+
+    const d = docSnap.data();
+
+    const snapAntrian = await getDocs(
+      query(
+        collection(db,"hafalan_daftar"),
+        where("mapelId","==",docSnap.id),
+        where("lembagaId","==",lembagaEl.value),
+        where("status","==","daftar")
+      )
+    );
+
+    const jumlah = snapAntrian.size;
+
+    let label = `${d.nama} (${jumlah})`;
+
+    if (jumlah >= MAX_ANTRIAN_MAPEL) {
+      label = `${d.nama} (${jumlah} - Penuh)`;
+    }
+
+    mapelEl.innerHTML += `
+      <option value="${docSnap.id}" data-nama="${d.nama}">
+        ${label}
+      </option>
+    `;
+  }
 }
-loadMapel();
+
+
 renderKeranjang();
 
 
@@ -235,6 +266,7 @@ window.cekKodeSekolah = async () => {
 
   const doc = snap.docs[0];
 
+
   // Set dropdown lembaga otomatis
   lembagaEl.innerHTML = `
     <option value="${doc.id}">
@@ -242,6 +274,7 @@ window.cekKodeSekolah = async () => {
     </option>`;
 
   lembagaEl.disabled = true; // kunci lembaga
+  await loadMapel();
   kodeEl.disabled = true; // kunci kode
   kodeInfo.innerText = "Lembaga ditemukan ✔";
   lembagaEl.dispatchEvent(new Event("change"));
@@ -355,7 +388,7 @@ window.tambahKeranjang = async () => {
 const docRef = await addDoc(collection(db,"keranjang_hafalan"), {
   siswaId: siswaEl.value,
   mapelId: mapelEl.value,
-  mapelNama: mapelEl.options[mapelEl.selectedIndex].text,
+  mapelNama: mapelEl.options[mapelEl.selectedIndex].dataset.nama,
   materiId: materiId,
   namaMateri: opt.dataset.nama,
   nilaiMaks: Number(opt.dataset.nilai),
@@ -365,7 +398,7 @@ const docRef = await addDoc(collection(db,"keranjang_hafalan"), {
 keranjang.push({
   docId: docRef.id, // sekarang sudah ada nilainya
   mapelId: mapelEl.value,
-  mapelNama: mapelEl.options[mapelEl.selectedIndex].text,
+  mapelNama: mapelEl.options[mapelEl.selectedIndex].dataset.nama,
   materiId: materiId,
   namaMateri: opt.dataset.nama,
   nilaiMaks: Number(opt.dataset.nilai)
@@ -454,10 +487,16 @@ window.daftarkanTerpilih = async () => {
 
   const jumlahMapel = snapMapel.size;
 
-  const lanjut = confirm(
-    `Saat ini ada ${jumlahMapel} antrian untuk mapel ${k.mapelNama}.\n\nLanjutkan pendaftaran?`
+  if (jumlahMapel >= MAX_ANTRIAN_MAPEL) {
+  alert(
+    `Antrian mapel ${k.mapelNama} sudah penuh (${jumlahMapel}).\n\nSilakan pilih mapel lain.`
   );
+  return;
+}
 
+ const lanjut = confirm(
+  `Saat ini ada ${jumlahMapel} / ${MAX_ANTRIAN_MAPEL} antrian untuk mapel ${k.mapelNama}.\n\nLanjutkan pendaftaran?`
+);
   if (!lanjut) return;
 
   await addDoc(collection(db,"hafalan_daftar"), {
