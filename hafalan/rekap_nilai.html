@@ -38,7 +38,7 @@ display:flex;align-items:center;justify-content:center;z-index:999;">
 
   <div style="background:white;padding:30px;width:320px;border-radius:8px;text-align:center;">
     <h3>Masukkan Kode Lembaga</h3>
-    <input type="text" id="kodeSekolah" placeholder=""
+    <input type="text" id="kodeSekolah"
       style="width:100%;padding:8px;margin-top:10px;">
     <button onclick="cekKode()">Masuk</button>
     <div id="infoKode" style="color:red;margin-top:10px;"></div>
@@ -142,6 +142,13 @@ kelasEl.onchange = async () => {
 rombelEl.onchange = kosongkanTabel;
 
 
+window.onload = () => {
+  const kodeLocal = localStorage.getItem("kodeLembaga");
+
+  if (kodeLocal) {
+    document.getElementById("kodeSekolah").value = kodeLocal;
+  }
+};
 
 /* ================= CEK KODE ================= */
 window.cekKode = async () => {
@@ -161,6 +168,7 @@ window.cekKode = async () => {
 
   lembagaId = snap.docs[0].id;
   lembagaNama = snap.docs[0].data().nama;
+localStorage.setItem("kodeLembaga", kode);
 
   document.getElementById("namaLembaga").innerText = lembagaNama;
 
