@@ -97,18 +97,28 @@ justify-content:center;
 <h3>Keranjang Pendaftaran</h3>
 <div id="keranjang">Belum ada</div>
 
-<button onclick="simpanPendaftaran()">Simpan Pendaftaran</button>
+<button onclick="daftarkanTerpilih()">Daftarkan</button>
 
 <hr>
 <h3>Antrian Hafalan</h3>
 <div id="antrian">Pilih siswa</div>
+
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+
+   import { initializeApp }
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+
 import {
-  getFirestore, collection, getDocs,
-  query, where, addDoc
+  getFirestore,
+  collection,
+  getDocs,
+  query,
+  where,
+  addDoc,
+  deleteDoc,
+  doc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 /* FIREBASE */
@@ -139,10 +149,14 @@ if (savedKode) {
 }
 
 let keranjang = [];
+// Load keranjang dari localStorage saat awal
+
+
+
 let antrianMateri = {}; // materiId -> true
 let jumlahAntrian = 0;
 let identitasTerkunci = false;
-const MAX = 3;
+const MAX_KERANJANG = 5;
 
 /* ================= UTIL ================= */
 function lockIdentitas() {
@@ -182,7 +196,10 @@ rombelEl.onchange = async () => {
   snap.forEach(d => siswaEl.innerHTML += `<option value="${d.id}">${d.data().nama}</option>`);
 };
 
-siswaEl.onchange = cekAntrian;
+siswaEl.onchange = async () => {
+  await cekAntrian();
+  await loadKeranjangFirestore();
+};
 
 /* MAPEL */
 async function loadMapel() {
@@ -191,6 +208,7 @@ async function loadMapel() {
   snap.forEach(d => mapelEl.innerHTML += `<option value="${d.id}">${d.data().nama}</option>`);
 }
 loadMapel();
+renderKeranjang();
 
 
 window.cekKodeSekolah = async () => {
@@ -308,7 +326,7 @@ mapelEl.onchange = async () => {
 };
 
 /* ================= KERANJANG ================= */
-window.tambahKeranjang = () => {
+window.tambahKeranjang = async () => {
   infoEl.innerText = "";
   const opt = materiEl.selectedOptions[0];
   if (!opt) return;
@@ -330,21 +348,34 @@ window.tambahKeranjang = () => {
     return;
   }
 
-  if (jumlahAntrian + keranjang.length >= MAX) {
-    infoEl.innerText = "Kuota antrian penuh";
-    return;
-  }
+  if (keranjang.length >= MAX_KERANJANG) {
+  infoEl.innerText = "Keranjang maksimal 5 materi";
+  return;
+}
+const docRef = await addDoc(collection(db,"keranjang_hafalan"), {
+  siswaId: siswaEl.value,
+  mapelId: mapelEl.value,
+  mapelNama: mapelEl.options[mapelEl.selectedIndex].text,
+  materiId: materiId,
+  namaMateri: opt.dataset.nama,
+  nilaiMaks: Number(opt.dataset.nilai),
+  tanggalTambah: new Date()
+});
 
-  keranjang.push({
-    mapelId: mapelEl.value,
-    mapelNama: mapelEl.options[mapelEl.selectedIndex].text,
-    materiId: materiId,
-    namaMateri: opt.dataset.nama,
-    nilaiMaks: Number(opt.dataset.nilai)
-  });
+keranjang.push({
+  docId: docRef.id, // sekarang sudah ada nilainya
+  mapelId: mapelEl.value,
+  mapelNama: mapelEl.options[mapelEl.selectedIndex].text,
+  materiId: materiId,
+  namaMateri: opt.dataset.nama,
+  nilaiMaks: Number(opt.dataset.nilai)
+});
 
   renderKeranjang();
+  simpanKeranjangLocal();
 };
+
+
 
 function renderKeranjang() {
   if (!keranjang.length) {
@@ -354,10 +385,20 @@ function renderKeranjang() {
 
   let html = `
   <table>
-    <tr><th>No</th><th>Mapel</th><th>Materi</th><th>Aksi</th></tr>`;
+    <tr>
+      <th>Pilih</th>
+      <th>No</th>
+      <th>Mapel</th>
+      <th>Materi</th>
+      <th>Aksi</th>
+    </tr>`;
+
   keranjang.forEach((k,i) => {
     html += `
     <tr>
+      <td>
+        <input type="radio" name="pilihMateri" value="${i}">
+      </td>
       <td>${i+1}</td>
       <td>${k.mapelNama}</td>
       <td>${k.namaMateri}</td>
@@ -366,13 +407,89 @@ function renderKeranjang() {
       </td>
     </tr>`;
   });
+
   html += "</table>";
   keranjangEl.innerHTML = html;
 }
 
-window.hapusKeranjang = (i) => {
+
+
+window.hapusKeranjang = async (i) => {
+
+  const item = keranjang[i];
+
+  await deleteDoc(doc(db,"keranjang_hafalan", item.docId));
+
   keranjang.splice(i,1);
   renderKeranjang();
+};
+
+
+window.daftarkanTerpilih = async () => {
+
+  if (jumlahAntrian > 0) {
+    alert("Masih ada antrian hafalan yang belum selesai");
+    return;
+  }
+
+  const radio = document.querySelector("input[name='pilihMateri']:checked");
+
+  if (!radio) {
+    alert("Pilih satu materi terlebih dahulu");
+    return;
+  }
+
+  const index = Number(radio.value);
+  const k = keranjang[index];
+
+  // 🔎 CEK JUMLAH ANTRIAN MAPEL TERSEBUT
+  const snapMapel = await getDocs(
+    query(
+      collection(db,"hafalan_daftar"),
+      where("mapelId","==",k.mapelId),
+      where("lembagaId","==",lembagaEl.value),
+      where("status","==","daftar")
+    )
+  );
+
+  const jumlahMapel = snapMapel.size;
+
+  const lanjut = confirm(
+    `Saat ini ada ${jumlahMapel} antrian untuk mapel ${k.mapelNama}.\n\nLanjutkan pendaftaran?`
+  );
+
+  if (!lanjut) return;
+
+  await addDoc(collection(db,"hafalan_daftar"), {
+    siswaId: siswaEl.value,
+    namaSiswa: siswaEl.options[siswaEl.selectedIndex].text,
+    lembagaId: lembagaEl.value,
+    lembagaNama: lembagaEl.options[lembagaEl.selectedIndex].text,
+    kelasId: kelasEl.value,
+    kelasNama: kelasEl.options[kelasEl.selectedIndex].text,
+    rombelId: rombelEl.value,
+    rombelNama: rombelEl.options[rombelEl.selectedIndex].text,
+
+    mapelId: k.mapelId,
+    mapelNama: k.mapelNama,
+    materiId: k.materiId,
+    namaMateri: k.namaMateri,
+    nilaiMaks: k.nilaiMaks,
+
+    nilaiPeroleh: null,
+    status: "daftar",
+    tanggalDaftar: new Date()
+  });
+
+  await deleteDoc(doc(db,"keranjang_hafalan", k.docId));
+
+  keranjang.splice(index, 1);
+
+  simpanKeranjangLocal();
+  renderKeranjang();
+  cekAntrian();
+
+  alert("Berhasil didaftarkan");
 };
 
 /* ================= SIMPAN ================= */
@@ -407,6 +524,38 @@ window.simpanPendaftaran = async () => {
   cekAntrian();
   alert("Pendaftaran berhasil");
 };
+
+function simpanKeranjangLocal() {
+  localStorage.setItem("keranjangHafalan", JSON.stringify(keranjang));
+}
+
+async function loadKeranjangFirestore() {
+
+  keranjang = [];
+
+  const snap = await getDocs(
+    query(
+      collection(db,"keranjang_hafalan"),
+      where("siswaId","==",siswaEl.value)
+    )
+  );
+
+  snap.forEach(docSnap => {
+    const d = docSnap.data();
+
+    keranjang.push({
+      docId: docSnap.id,
+      mapelId: d.mapelId,
+      mapelNama: d.mapelNama,
+      materiId: d.materiId,
+      namaMateri: d.namaMateri,
+      nilaiMaks: d.nilaiMaks
+    });
+  });
+
+  renderKeranjang();
+}
+
 </script>
 
 </body>
