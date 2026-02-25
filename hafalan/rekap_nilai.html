@@ -254,16 +254,45 @@ if (!rekap[key]) {
   });
 
   let data = Object.values(rekap);
+if (sortColumn === "kelas") {
 
   data.sort((a,b)=>{
+
+    // Jika kelas berbeda → urut alfabet kelas
     if (a.kelas !== b.kelas) {
-      return a.kelas.localeCompare(b.kelas);
+      return sortDirection === "asc"
+        ? a.kelas.localeCompare(b.kelas)
+        : b.kelas.localeCompare(a.kelas);
     }
+
+    // Jika kelas sama → nilai tertinggi dulu
     return b.total - a.total;
+
   });
+
+} else if (sortColumn === "nama") {
+
+  data.sort((a,b)=>{
+    return sortDirection === "asc"
+      ? a.nama.localeCompare(b.nama)
+      : b.nama.localeCompare(a.nama);
+  });
+
+} else if (sortColumn === "total") {
+
+  data.sort((a,b)=>{
+    return sortDirection === "asc"
+      ? a.total - b.total
+      : b.total - a.total;
+  });
+
+}
 
   renderTabel(data);
 };
+
+let sortColumn = "";
+let sortDirection = "asc";
 
 /* ================= RENDER ================= */
 function renderTabel(data){
@@ -277,9 +306,17 @@ function renderTabel(data){
   <table>
   <tr>
     <th>No</th>
-    <th>Kelas</th>
-    <th>Nama</th>
-    <th>Total Nilai</th>
+   <th onclick="setSort('kelas')" style="cursor:pointer">
+  Kelas ⬍
+</th>
+
+<th onclick="setSort('nama')" style="cursor:pointer">
+  Nama ⬍
+</th>
+
+<th onclick="setSort('total')" style="cursor:pointer">
+  Total Nilai ⬍
+</th>
   </tr>`;
 
   let no=1;
@@ -297,6 +334,17 @@ function renderTabel(data){
   html += "</table>";
 
   document.getElementById("tabel").innerHTML = html;
+}
+window.setSort = function(column){
+
+  if (sortColumn === column) {
+    sortDirection = sortDirection === "asc" ? "desc" : "asc";
+  } else {
+    sortColumn = column;
+    sortDirection = "asc";
+  }
+
+  tampilkan();
 }
 </script>
 
