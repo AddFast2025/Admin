@@ -123,7 +123,10 @@ z-index:999;
   <label>Nilai</label>
   <input id="p_nilai" type="number">
 
-  <button class="simpan" onclick="simpanNilai()">Simpan Nilai</button>
+ <button id="btnSimpan" class="simpan" onclick="simpanNilai()" disabled>
+  Simpan Nilai
+</button>
+
 </div>
   
 <button onclick="loadAntrian()">Tampilkan Antrian</button>
@@ -340,8 +343,19 @@ window.loadAntrian = async () => {
       <td>${r.namaSiswa}</td>
       <td>${r.mapelNama}<br><small>${r.namaMateri}</small></td>
       <td>
-        <button class="kecil" onclick='bukaNilai("${d.id}", ${JSON.stringify(r)})'>Nilai</button>
-      </td>
+  <button class="kecil"
+    onclick='bukaNilai("${d.id}", ${JSON.stringify(r)})'>
+    Nilai
+  </button>
+
+  <br><br>
+
+  <button class="kecil"
+    style="background:#c62828; color:white;"
+    onclick='hapusAntrian("${d.id}", "${r.namaSiswa}", "${r.mapelNama}", "${r.namaMateri}")'>
+    🗑 Hapus
+  </button>
+</td>
     </tr>`;
   });
 
@@ -363,7 +377,28 @@ window.bukaNilai = (id, r) => {
   document.getElementById("p_nilai").value = "";
 
   panel.style.display = "block";
+  btnSimpan.disabled = true;
 };
+
+const inputNilai = document.getElementById("p_nilai");
+const btnSimpan = document.getElementById("btnSimpan");
+
+inputNilai.addEventListener("input", () => {
+  const val = inputNilai.value;
+
+  if (val === "") {
+    btnSimpan.disabled = true;
+    return;
+  }
+
+  const angka = Number(val);
+
+  if (!isNaN(angka) && angka >= 0 && angka <= aktifNilaiMaks) {
+    btnSimpan.disabled = false;
+  } else {
+    btnSimpan.disabled = true;
+  }
+});
 
 /* SIMPAN NILAI */
 window.simpanNilai = async () => {
@@ -382,6 +417,23 @@ window.simpanNilai = async () => {
   panel.style.display = "none";
   loadAntrian();
 };
+import { deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+window.hapusAntrian = async (id, nama, mapel, materi) => {
+
+  const konfirmasi = confirm(
+    `Anda ingin menghapus antrian ${mapel} - ${materi} milik ${nama} ?`
+  );
+
+  if (!konfirmasi) return;
+
+  await deleteDoc(doc(db, "hafalan_daftar", id));
+
+  alert("Antrian berhasil dihapus");
+
+  loadAntrian();
+};
+
 </script>
 
 </body>
