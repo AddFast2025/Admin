@@ -246,7 +246,13 @@ const isi = batasiKata(isiFull, 15);
       <td>
         ${bacaan ? `
           <button class="edit"
-            onclick="editBacaan('${bacaan.id}','${d.id}',\`${isiFull}\`)">✏️</button>
+         
+  data-id="${bacaan.id}"
+  data-materi="${d.id}"
+  data-isi="${encodeURIComponent(isiFull)}"
+  onclick="editBacaan(this)">
+  ✏️
+</button>
           <button class="hapus"
             onclick="hapusBacaan('${bacaan.id}')">❌</button>
         ` : `
@@ -265,21 +271,24 @@ const isi = batasiKata(isiFull, 15);
 
 /* ================= EDIT ================= */
 
+window.editBacaan = async (btn)=>{
 
-window.editBacaan = async (id, materiId, isi)=>{
+  const id = btn.dataset.id;
+  const materiId = btn.dataset.materi;
+  const isi = decodeURIComponent(btn.dataset.isi);
 
   editId = id;
 
-  // Cek apakah materi ada di dropdown
+  // Cek apakah option materi sudah ada
   if(!materiEl.querySelector(`option[value="${materiId}"]`)){
 
-    // Ambil nama materi dari Firestore
-    const materiSnap = await getDocs(
+    // Ambil data materi dari Firestore
+    const snap = await getDocs(
       query(collection(db,"materi_hafalan"),
       where("__name__","==",materiId))
     );
 
-    materiSnap.forEach(d=>{
+    snap.forEach(d=>{
       const r = d.data();
       materiEl.innerHTML +=
         `<option value="${d.id}" data-nama="${r.namaMateri}">
@@ -288,10 +297,16 @@ window.editBacaan = async (id, materiId, isi)=>{
     });
   }
 
+  // Setelah dipastikan ada → pilih
   materiEl.value = materiId;
+
+  // Isi textarea
   isiEl.value = isi;
+
   isiEl.focus();
 };
+
+
 
 /* ================= DELETE ================= */
 window.hapusBacaan = async (id)=>{
