@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Komentar Penilaian</title>
+
+<style>
+body{
+  font-family: system-ui, Arial, sans-serif;
+  background:#f1f5f9;
+  margin:0;
+  padding:30px;
+}
+
+
+.container{
+  max-width:1000px;
+  margin:auto;
+  background:white;
+  padding:25px;
+  border-radius:12px;
+  box-shadow:0 5px 15px rgba(0,0,0,0.08);
+}
+
+h1{
+  text-align:center;
+  margin-bottom:20px;
+}
+
+select{
+  width:100%;
+  padding:10px;
+  font-size:16px;
+  margin-bottom:20px;
+  border-radius:8px;
+  border:1px solid #cbd5e1;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+
+th, td{
+  border:1px solid #e2e8f0;
+  padding:10px;
+  vertical-align:top;
+}
+
+th{
+  background:#f8fafc;
+}
+
+.no{
+  width:50px;
+  text-align:center;
+}
+
+.copy{
+  width:100px;
+  text-align:center;
+}
+
+button{
+  padding:6px 10px;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+  background:#2563eb;
+  color:white;
+}
+
+button:hover{
+  background:#1e40af;
+}
+
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+  <h1>Komentar Penilaian</h1>
+
+  <select id="pilihanKomentar" onchange="tampilkanKomentar()">
+    <option value="">-- Pilih Jenis Komentar --</option>
+    <option value="rpp">Komentar RPP</option>
+    <option value="video">Komentar Video Pembelajaran</option>
+    <option value="kasus">Komentar Studi Kasus</option>
+  </select>
+
+  <div id="tabelKomentar"></div>
+</div>
+
+<script>
+const dataKomentar = {
+
+rpp: [
+"Modul yang disusun telah menerapkan proses pembelajaran yang berpusat pada peserta didik.",
+"Modul yang disusun menjabarkan tujuan pembelajaran dengan pemahaman yang mendalam, penerapan dalam dunia nyata dan berpikir kritis.",
+"Modul yang disusun menjabarkan tujuan pembelajaran dengan memasukkan beberapa tema KBC.",
+"Modul yang disusun telah menggunakan kata kerja operasional yang sesuai dengan capaian pembelajaran.",
+"Modul yang disusun telah mengorganisasikan dan menerapkan pengetahuan konten yang relevan untuk mencapai tujuan pembelajaran.",
+"Modul yang disusun telah menerapkan strategi pembelajaran yang efektif untuk capaian belajar literasi dan numerasi peserta didik.",
+"Guru telah merencanakan desain pembelajaran yang terstruktur dan berurutan untuk mencapai tujuan pembelajaran secara mendalam.",
+"Guru telah mengembangkan desain pembelajaran yang relevan dengan kondisi di sekitar sekolah.",
+"Guru dapat memilih dan menggunakan sumber belajar yang sesuai dengan tujuan pembelajaran.",
+"Guru menampilkan media yang sesuai dengan tujuan pembelajaran.",
+"Guru dapat memanfaatkan teknologi informasi dan komunikasi (TIK) secara adaptif dalam pembelajaran."
+],
+
+video: [
+"Guru dapat menjadi teladan yang baik dalam penerapan strategi pembelajaran yang efektif.",
+"Guru telah menggunakan sumber belajar yang sesuai dengan tujuan pembelajaran.",
+"Guru memanfaatkan teknologi dalam pembelajaran.",
+"Guru membuat desain pembelajaran yang terstruktur.",
+"Guru menumbuhkan motivasi belajar pada peserta didik.",
+"Guru mendorong siswa untuk mencintai lingkungan.",
+"Guru memiliki kesabaran dalam membimbing para siswa.",
+"Guru telah menjaga etika dalam pembelajaran.",
+"Guru menerapkan pembelajaran yang berpusat pada peserta didik."
+],
+
+kasus: [
+"Guru telah mendeskripsikan masalah yang dihadapi secara detail.",
+"Guru telah memberikan uraian yang tepat dalam penyelesaian masalah.",
+"Guru telah menjabarkan tindakannya secara rinci dan jelas.",
+"Guru dapat mengambil pengalaman berharga dari masalah yang dihadapi."
+]
+
+};
+
+function tampilkanKomentar(){
+  const pilihan = document.getElementById("pilihanKomentar").value;
+  const container = document.getElementById("tabelKomentar");
+
+  if(!pilihan){
+    container.innerHTML = "";
+    return;
+  }
+
+  const komentar = dataKomentar[pilihan];
+
+  let html = `
+    <table>
+      <tr>
+        <th class="no">No</th>
+        <th>Komentar</th>
+        <th class="copy">Copy</th>
+      </tr>
+  `;
+
+  komentar.forEach((k, index)=>{
+    html += `
+      <tr>
+        <td class="no">${index+1}</td>
+        <td id="komentar-${index}">${k}</td>
+        <td class="copy">
+          <button onclick="copyText('${k.replace(/'/g, "\\'")}')">Copy</button>
+        </td>
+      </tr>
+    `;
+  });
+
+  html += "</table>";
+  container.innerHTML = html;
+}
+
+function copyText(text){
+  navigator.clipboard.writeText(text);
+
+  const toast = document.getElementById("toast");
+  toast.style.display = "block";
+
+  setTimeout(()=>{
+    toast.style.display = "none";
+  },2000);
+}
+</script>
+<div id="toast" style="
+  position:fixed;
+  bottom:30px;
+  right:30px;
+  background:#16a34a;
+  color:white;
+  padding:12px 18px;
+  border-radius:8px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.2);
+  display:none;
+  font-size:14px;
+">
+  Komentar berhasil disalin!
+</div>
+</body>
+</html>
