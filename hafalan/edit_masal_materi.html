@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Edit Massal Materi</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body { font-family: Arial; background:#f4f6f8; padding:20px; }
+.card { max-width:1000px; margin:auto; background:#fff; padding:20px; border-radius:8px; }
+
+select, button, input {
+  padding:6px;
+  font-size:14px;
+}
+
+table {
+  width:100%;
+  border-collapse:collapse;
+  margin-top:15px;
+}
+
+th, td {
+  border:1px solid #ddd;
+  padding:6px;
+  text-align:center;
+}
+
+th { background:#e8f5e9; }
+
+input {
+  width:100%;
+  box-sizing:border-box;
+}
+
+.simpanBtn {
+  background:#2e7d32;
+  color:white;
+  border:none;
+  padding:8px 15px;
+  cursor:pointer;
+  margin-top:10px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+<h2 align="center">Edit Massal Materi</h2>
+
+<label>Pilih Mapel</label>
+<select id="mapel"></select>
+
+<button class="simpanBtn" onclick="simpanSemua()">💾 Simpan Semua Perubahan</button>
+
+<div id="tabelMateri">Memuat...</div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getFirestore, collection, getDocs,
+  query, where, doc, updateDoc
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "APIKEY_ANDA",
+  authDomain: "datasiswa-c10f4.firebaseapp.com",
+  projectId: "datasiswa-c10f4"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const mapelEl = document.getElementById("mapel");
+const tabelEl = document.getElementById("tabelMateri");
+
+let kodeMapelAktif = "";
+let dataMateri = [];
+
+/* LOAD MAPEL */
+async function loadMapel() {
+  const snap = await getDocs(collection(db,"mapel"));
+
+  let mapelList = [];
+  snap.forEach(d=>{
+    const r = d.data();
+    mapelList.push({
+      id:d.id,
+      nama:r.nama,
+      kodeMapel:r.kodeMapel ?? ""
+    });
+  });
+
+  mapelList.sort((a,b)=> a.nama.localeCompare(b.nama));
+
+  mapelEl.innerHTML = "";
+  mapelList.forEach(m=>{
+    mapelEl.innerHTML += `
+      <option value="${m.id}" data-kode="${m.kodeMapel}">
+        ${m.kodeMapel} : ${m.nama}
+      </option>
+    `;
+  });
+
+  loadMateri();
+}
+
+/* LOAD MATERI */
+async function loadMateri() {
+  const selected = mapelEl.options[mapelEl.selectedIndex];
+  kodeMapelAktif = selected.dataset.kode;
+
+  const snap = await getDocs(
+    query(collection(db,"materi_hafalan"),
+    where("mapelId","==",mapelEl.value))
+  );
+
+  dataMateri = [];
+
+  snap.forEach(d=>{
+    const r = d.data();
+    dataMateri.push({
+      id:d.id,
+      namaMateri:r.namaMateri,
+      nilaiMaks:r.nilaiMaks,
+      urutanMateri:r.urutanMateri ?? ""
+    });
+  });
+
+  dataMateri.sort((a,b)=>
+    (a.urutanMateri ?? 0) - (b.urutanMateri ?? 0)
+  );
+
+  renderTabel();
+}
+
+/* RENDER TABEL */
+function renderTabel() {
+
+  let html = `
+  <table>
+  <tr>
+    <th>No</th>
+    <th>Materi</th>
+    <th>Kode</th>
+    <th>Nilai</th>
+    <th>Kode Lengkap</th>
+  </tr>
+  `;
+
+  dataMateri.forEach((r,i)=>{
+
+    const kodeLengkap = kodeMapelAktif + (r.urutanMateri ?? "");
+
+    html += `
+    <tr>
+      <td>${i+1}</td>
+
+      <td>
+        <input value="${r.namaMateri}"
+        onchange="dataMateri[${i}].namaMateri=this.value">
+      </td>
+
+      <td>
+        <input value="${r.urutanMateri}"
+        onchange="updateKode(${i},this.value)">
+      </td>
+
+      <td>
+        <input type="number" value="${r.nilaiMaks}"
+        onchange="dataMateri[${i}].nilaiMaks=this.value">
+      </td>
+
+      <td id="kodeLengkap${i}">
+        ${kodeLengkap}
+      </td>
+    </tr>
+    `;
+  });
+
+  html += "</table>";
+  tabelEl.innerHTML = html;
+}
+
+/* UPDATE KODE OTOMATIS */
+window.updateKode = function(index,val){
+  dataMateri[index].urutanMateri = val;
+  document.getElementById("kodeLengkap"+index).innerText =
+    kodeMapelAktif + val;
+}
+
+
+
+/* SIMPAN SEMUA */
+
+window.simpanSemua = async function(){
+
+  const rows = document.querySelectorAll("#tabelMateri table tr");
+
+  for (let i = 1; i < rows.length; i++) {
+
+    const inputs = rows[i].querySelectorAll("input");
+
+    const namaMateri = inputs[0].value.trim();
+    const urutanMateri = inputs[1].value;
+    const nilaiMaks = inputs[2].value;
+
+    const id = dataMateri[i-1].id;
+    const kodeLengkap = kodeMapelAktif + urutanMateri;
+
+    await updateDoc(doc(db,"materi_hafalan",id),{
+      namaMateri: namaMateri,
+      nilaiMaks: Number(nilaiMaks),
+      urutanMateri: Number(urutanMateri),
+      kodeLengkap: kodeLengkap
+    });
+  }
+
+  alert("Semua perubahan berhasil disimpan");
+  loadMateri();
+}
+
+
+
+mapelEl.addEventListener("change",loadMateri);
+loadMapel();
+
+</script>
+</body>
+</html>
