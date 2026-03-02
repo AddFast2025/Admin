@@ -225,12 +225,13 @@ document.getElementById("btn").onclick = async ()=>{
   const siswaMap = {};
   siswaSnap.forEach(d=>{
     siswaMap[d.id] = {
-      nama: d.data().nama,
-      jamaah: 0,
-      lapor: 0,
-      pagi: 0,
-      total: 0
-    };
+  nama: d.data().nama,
+  jamaah: 0,
+  lapor: 0,
+  pagi: 0,
+  hafalan: 0,
+  total: 0
+};
   });
 
   /* ===== 2. Loader nilai ===== */
@@ -246,18 +247,34 @@ document.getElementById("btn").onclick = async ()=>{
   const startDate = new Date(start);
   const endDate   = new Date(end);
 
-  snap.forEach(d=>{
-    const r = d.data();
-    if(!r.dibuat) return;
-    const tgl = r.dibuat.toDate();
+ snap.forEach(d=>{
+  const r = d.data();
+  
+  
+  
+  // Tentukan field tanggal
+let tglField = r.dibuat ?? r.tanggalNilai ?? r.tanggalDaftar;
 
-    if(tgl >= startDate && tgl <= endDate){
-      if(siswaMap[r.siswaId]){
-        siswaMap[r.siswaId][field] += r.nilai;
-        siswaMap[r.siswaId].total += r.nilai;
-      }
+if(!tglField) return;
+
+const tgl = tglField.toDate();
+
+
+
+
+
+  if(tgl >= startDate && tgl <= endDate){
+
+    if(siswaMap[r.siswaId]){
+
+      const nilai = r.nilai ?? r.nilaiPeroleh ?? 0;
+
+      siswaMap[r.siswaId][field] += nilai;
+      siswaMap[r.siswaId].total += nilai;
     }
-  });
+
+  }
+});
 }
 
   /* ===== 3. Ambil 3 koleksi ===== */
@@ -265,6 +282,7 @@ document.getElementById("btn").onclick = async ()=>{
     loadNilai("absen_jamaah_subuh","jamaah"),
     loadNilai("lapor_subuh","lapor"),
     loadNilai("absen_pagi","pagi"),
+     loadNilai("hafalan_daftar","hafalan") // ← TAMBAHAN
   ]);
 
   /* ===== 4. Render ===== */
@@ -281,7 +299,8 @@ document.getElementById("btn").onclick = async ()=>{
           <div class="rincian">
             Jamaah ${r.jamaah} + 
             Subuh ${r.lapor} + 
-            Absen ${r.pagi}
+            Absen ${r.pagi}+
+             Hafalan ${r.hafalan}
           </div>
         </td>
         <td><b>${r.total}</b></td>
