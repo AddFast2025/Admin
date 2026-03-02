@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Rekapitulasi Nilai Hafalan</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{
+  font-family:Arial;
+  background:#f4f6f8;
+  padding:20px;
+}
+
+.card{
+  max-width:1200px;
+  margin:auto;
+  background:white;
+  padding:20px;
+  border-radius:8px;
+}
+
+h2{
+  text-align:center;
+}
+
+select, button{
+  padding:8px;
+  margin-top:10px;
+}
+
+button{
+  background:#1565c0;
+  color:white;
+  border:none;
+  cursor:pointer;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:20px;
+}
+
+th, td{
+  border:1px solid #ddd;
+  padding:6px;
+  text-align:center;
+}
+
+th{
+  background:#e3f2fd;
+}
+
+.keterangan{
+  margin-top:30px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+
+<h2>Rekapitulasi Nilai Hafalan</h2>
+
+<label>Pilih Lembaga</label>
+<select id="lembaga"></select>
+<br>
+<button onclick="loadRekap()">Tampilkan Rekap</button>
+<button onclick="exportExcel()">Export ke Excel</button>
+
+<div id="rekap"></div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  getDocs,
+  query,
+  where
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "datasiswa-c10f4.firebaseapp.com",
+  projectId: "datasiswa-c10f4"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const lembagaEl = document.getElementById("lembaga");
+const rekapEl = document.getElementById("rekap");
+
+
+// Load lembaga
+async function loadLembaga(){
+  const snap = await getDocs(collection(db,"lembaga"));
+  lembagaEl.innerHTML = "<option value=''>-- Pilih Lembaga --</option>";
+  snap.forEach(d=>{
+    lembagaEl.innerHTML += `<option value="${d.id}">${d.data().nama}</option>`;
+  });
+}
+loadLembaga();
+
+
+// Load Rekap
+window.loadRekap = async () => {
+
+  if(!lembagaEl.value){
+    alert("Pilih lembaga dulu");
+    return;
+  }
+
+  rekapEl.innerHTML = "Memuat...";
+
+  // =========================
+  // 1️⃣ Ambil semua siswa
+  // =========================
+  const snapSiswa = await getDocs(
+    query(
+      collection(db,"siswa"),
+      where("lembagaId","==",lembagaEl.value)
+    )
+  );
+
+  if(snapSiswa.empty){
+    rekapEl.innerHTML = "Belum ada siswa";
+    return;
+  }
+
+  const siswaList = [];
+ // Ambil semua kelas
+const snapKelas = await getDocs(collection(db,"kelas"));
+const kelasMap = {};
+snapKelas.forEach(d=>{
+  kelasMap[d.id] = d.data().nama;
+});
+
+// Ambil semua rombel
+const snapRombel = await getDocs(collection(db,"rombel"));
+const rombelMap = {};
+snapRombel.forEach(d=>{
+  rombelMap[d.id] = d.data().nama;
+});
+
+// Ambil siswa
+snapSiswa.forEach(d=>{
+  const s = d.data();
+
+  siswaList.push({
+    id:d.id,
+    nama:s.nama,
+    kelas:kelasMap[s.kelasId] ?? "-",
+    rombel:rombelMap[s.rombelId] ?? "-"
+  });
+});
+
+  // =========================
+  // 2️⃣ Ambil semua data hafalan
+  // =========================
+  const snapNilai = await getDocs(
+    query(
+      collection(db,"hafalan_daftar"),
+      where("lembagaId","==",lembagaEl.value)
+    )
+  );
+
+  // ==========================
+// Ambil semua Mapel
+// ==========================
+const snapMapel = await getDocs(collection(db,"mapel"));
+const mapelMap = {};
+
+snapMapel.forEach(d=>{
+  mapelMap[d.id] = d.data().nama;
+});
+
+// ==========================
+// Ambil semua Materi Hafalan
+// ==========================
+const snapMateri = await getDocs(collection(db,"materi_hafalan"));
+const materiMap = {};
+
+snapMateri.forEach(d=>{
+  const m = d.data();
+  materiMap[d.id] = m.kodeLengkap ?? "-";
+});
+
+// ==========================
+// ==========================
+// Ambil Kolom Nilai dari hafalan_daftar
+// ==========================
+const kolomNilai = [];
+const kolomSet = new Set();
+
+snapNilai.forEach(d=>{
+  const r = d.data();
+  const kode = r.mapelId + "_" + r.materiId;
+
+  if(!kolomSet.has(kode)){
+    kolomSet.add(kode);
+    kolomNilai.push({
+      kode: kode,
+      mapel: r.mapelNama,
+      materi: r.namaMateri,
+       kodeLengkap: materiMap[r.materiId] ?? "-"
+    });
+  }
+});
+
+// ==========================
+// Urutkan berdasarkan kodeLengkap (Huruf + Angka)
+// ==========================
+kolomNilai.sort((a,b)=>{
+
+  const regex = /^([A-Za-z]+)(\d+)/;
+
+  const matchA = a.kodeLengkap.match(regex);
+  const matchB = b.kodeLengkap.match(regex);
+
+  if(!matchA || !matchB) return 0;
+
+  const hurufA = matchA[1];
+  const angkaA = parseInt(matchA[2]);
+
+  const hurufB = matchB[1];
+  const angkaB = parseInt(matchB[2]);
+
+  if(hurufA !== hurufB){
+    return hurufA.localeCompare(hurufB);
+  }
+
+  return angkaA - angkaB;
+});
+    
+  // ==========================
+// Bentuk Map Nilai Siswa
+// ==========================
+// ==========================
+// Bentuk Map Nilai Siswa (pakai siswaId agar aman)
+// ==========================
+const nilaiMap = {};
+
+snapNilai.forEach(d=>{
+  const r = d.data();
+
+ const kode = r.mapelId + "_" + r.materiId;
+const key = r.siswaId;
+
+  if(!nilaiMap[key]){
+    nilaiMap[key] = {};
+  }
+
+  nilaiMap[key][kode] = r.nilaiPeroleh ?? 0;
+});
+
+  // =========================
+  // 3️⃣ Buat tabel
+  // =========================
+  let html = "<table><tr>";
+  html += "<th>No</th>";
+  html += "<th>Kelas/Rombel</th>";
+  html += "<th>Nama Siswa</th>";
+
+  kolomNilai.forEach((k,i)=>{
+    html += `<th>${k.kodeLengkap}</th>`;
+  });
+
+  html += "</tr>";
+
+  siswaList.forEach((s,i)=>{
+    html += "<tr>";
+    html += `<td>${i+1}</td>`;
+    html += `<td>${s.kelas}/${s.rombel}</td>`;
+    html += `<td>${s.nama}</td>`;
+
+    kolomNilai.forEach(k=>{
+  const nilai = nilaiMap[s.id]?.[k.kode] ?? 0;
+  html += `<td>${nilai}</td>`;
+});
+
+    html += "</tr>";
+  });
+
+  html += "</table>";
+
+  // =========================
+  // 4️⃣ Tabel Keterangan
+  // =========================
+  html += "<div class='keterangan'>";
+  html += "<h3>Kodifikasi Nilai</h3>";
+  html += "<table>";
+  html += "<tr><th>No Nilai</th><th>Mapel</th><th>Materi</th></tr>";
+
+  kolomNilai.forEach((k,i)=>{
+  html += `<tr>
+    <td>${k.kodeLengkap}</td>
+    <td>${k.mapel}</td>
+    <td>${k.materi}</td>
+  </tr>`;
+});
+
+  html += "</table></div>";
+
+  rekapEl.innerHTML = html;
+};
+
+window.exportExcel = () => {
+
+  const tables = document.querySelectorAll("#rekap table");
+
+  if(tables.length === 0){
+    alert("Tampilkan rekap dulu");
+    return;
+  }
+
+  // =========================
+  // Buat Workbook baru
+  // =========================
+  const wb = XLSX.utils.book_new();
+
+  // =========================
+  // Sheet 1 → Rekap Nilai
+  // =========================
+  const wsRekap = XLSX.utils.table_to_sheet(tables[0]);
+  XLSX.utils.book_append_sheet(wb, wsRekap, "Rekap Nilai");
+
+  // =========================
+  // Sheet 2 → Kodifikasi
+  // =========================
+  if(tables[1]){
+    const wsKode = XLSX.utils.table_to_sheet(tables[1]);
+    XLSX.utils.book_append_sheet(wb, wsKode, "Kodifikasi Nilai");
+  }
+
+  // =========================
+  // Nama File Dinamis
+  // =========================
+  const lembagaText = lembagaEl.options[lembagaEl.selectedIndex].text;
+  const tanggal = new Date().toISOString().slice(0,10);
+
+  XLSX.writeFile(wb, `Rekap_${lembagaText}_${tanggal}.xlsx`);
+};
+
+</script>
+
+</body>
+</html>
