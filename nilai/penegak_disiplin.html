@@ -222,33 +222,42 @@ document.getElementById("btn").onclick = async ()=>{
   });
 
   /* ===== Loader nilai ===== */
-  async function loadNilai(colName){
-    const snap = await getDocs(query(
-      collection(db,colName),
-      where("lembagaId","==",lembagaEl.value)
-    ));
+  
+async function loadNilai(colName){
+  const snap = await getDocs(query(
+    collection(db,colName),
+    where("lembagaId","==",lembagaEl.value)
+  ));
 
-    snap.forEach(d=>{
-      const r = d.data();
-      if(!r.dibuat) return;
+  snap.forEach(d=>{
+    const r = d.data();
 
-      const tgl = r.dibuat.toDate();
-      if(tgl < startDate || tgl > endDate) return;
+    // Ambil field tanggal fleksibel
+    let tglField = r.dibuat ?? r.tanggalNilai ?? r.tanggalDaftar;
+    if(!tglField) return;
 
-      if(
-        siswaMap[r.rombelId] &&
-        siswaMap[r.rombelId][r.siswaId]
-      ){
-        siswaMap[r.rombelId][r.siswaId].total += r.nilai;
-      }
-    });
-  }
+    const tgl = tglField.toDate();
+    if(tgl < startDate || tgl > endDate) return;
 
-  await Promise.all([
-    loadNilai("absen_jamaah_subuh"),
-    loadNilai("lapor_subuh"),
-    loadNilai("absen_pagi"),
-  ]);
+    if(
+      siswaMap[r.rombelId] &&
+      siswaMap[r.rombelId][r.siswaId]
+    ){
+      const nilai = r.nilai ?? r.nilaiPeroleh ?? 0;
+      siswaMap[r.rombelId][r.siswaId].total += nilai;
+    }
+  });
+}
+
+
+
+
+await Promise.all([
+  loadNilai("absen_jamaah_subuh"),
+  loadNilai("lapor_subuh"),
+  loadNilai("absen_pagi"),
+  loadNilai("hafalan_daftar") // ← TAMBAHAN
+]);
 
   /* ===== Render ===== */
   let totalRombel = 0;
