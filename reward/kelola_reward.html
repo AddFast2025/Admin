@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Kelola Reward Advanced</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{font-family:Arial;background:#f4f6f8;padding:20px}
+.card{max-width:1000px;margin:auto;background:#fff;padding:20px;border-radius:12px}
+
+h2{text-align:center}
+h3{color:#1976d2}
+
+table{border-collapse:collapse;width:100%;margin-top:10px}
+th{background:#1976d2;color:white;padding:8px}
+td{padding:8px;text-align:center}
+tr:nth-child(even){background:#f5f5f5}
+
+.btn{padding:5px 8px;border:none;border-radius:5px;cursor:pointer}
+.btn-hapus{background:red;color:white}
+.btn-edit{background:orange;color:white}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+
+<h2>📊 KELOLA REWARD</h2>
+
+<input id="kodeLembaga" placeholder="Kode lembaga">
+<button onclick="cekKode()">OK</button>
+
+<h3 id="namaLembaga"></h3>
+
+<select id="pilihKelas"></select>
+<select id="pilihRombel"></select>
+
+<button onclick="loadRekap()">Tampilkan</button>
+
+<!-- TABEL UTAMA -->
+<table id="tabelReward">
+<thead>
+<tr>
+<th>No</th>
+<th>Nama Siswa</th>
+<th>Poin</th>
+<th>Aksi</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+
+<!-- DETAIL -->
+<div id="detailBox" style="display:none">
+<h3 id="judulDetail">📜 Riwayat Reward</h3>
+
+<table id="tabelDetail">
+<thead>
+<tr>
+<th>Tanggal</th>
+<th>Poin</th>
+<th>Guru</th>
+<th>Keterangan</th>
+<th>Aksi</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+
+</div>
+
+</div>
+
+<script type="module">
+
+let siswaAktif = "";
+let namaSiswaAktif = "";
+
+import { initializeApp } from
+"https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+
+import {
+getFirestore, collection, getDocs,
+query, where, deleteDoc, doc, updateDoc
+} from
+"https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey:"AIza...",
+  authDomain:"datasiswa-c10f4.firebaseapp.com",
+  projectId:"datasiswa-c10f4"
+});
+
+const db = getFirestore(app);
+
+let lembagaId = "";
+
+/* ================= CEK KODE ================= */
+window.cekKode = async function(){
+  const kode = document.getElementById("kodeLembaga").value;
+
+  const snap = await getDocs(query(
+    collection(db,"lembaga"),
+    where("kode","==",kode)
+  ));
+
+  const docData = snap.docs[0];
+  lembagaId = docData.id;
+
+  document.getElementById("namaLembaga").innerText = docData.data().nama;
+
+  loadKelas();
+};
+
+/* ================= LOAD KELAS ================= */
+async function loadKelas(){
+  const snap = await getDocs(query(
+    collection(db,"kelas"),
+    where("lembagaId","==",lembagaId)
+  ));
+
+  const select = document.getElementById("pilihKelas");
+  select.innerHTML="";
+
+  snap.forEach(d=>{
+    select.innerHTML += `<option value="${d.id}">${d.data().nama}</option>`;
+  });
+}
+
+/* ================= LOAD ROMBEL ================= */
+document.getElementById("pilihKelas").onchange = async function(){
+  const snap = await getDocs(query(
+    collection(db,"rombel"),
+    where("kelasId","==",this.value)
+  ));
+
+  const select = document.getElementById("pilihRombel");
+  select.innerHTML="";
+
+  snap.forEach(d=>{
+    select.innerHTML += `<option value="${d.id}">${d.data().nama}</option>`;
+  });
+};
+
+/* ================= LOAD REKAP ================= */
+window.loadRekap = async function(){
+
+  const kelasId = pilihKelas.value;
+  const rombelId = pilihRombel.value;
+
+  const snap = await getDocs(query(
+    collection(db,"reward_siswa"),
+    where("kelasId","==",kelasId),
+    where("rombelId","==",rombelId)
+  ));
+
+  const map={};
+
+  snap.forEach(d=>{
+    const r=d.data();
+
+    if(!map[r.siswaId]){
+      map[r.siswaId]={nama:r.namaSiswa,poin:0};
+    }
+
+    map[r.siswaId].poin+=r.poin;
+  });
+
+  const data=Object.entries(map);
+
+  const tbody=document.querySelector("#tabelReward tbody");
+  tbody.innerHTML="";
+
+  data.forEach(([id,s],i)=>{
+    tbody.innerHTML+=`
+    <tr>
+      <td>${i+1}</td>
+      <td onclick="loadDetail('${id}')">${s.nama}</td>
+      <td>${s.poin}</td>
+      <td>
+  <button onclick="loadDetail('${id}','${s.nama}')">🔍</button>
+</td>
+    </tr>`;
+  });
+};
+
+/* ================= DETAIL ================= */
+
+window.loadDetail = async function(siswaId, namaSiswa){
+
+  siswaAktif = siswaId;
+  namaSiswaAktif = namaSiswa;
+
+  document.getElementById("judulDetail").innerText =
+    "📜 Riwayat Reward : " + namaSiswa;
+
+  const snap = await getDocs(query(
+    collection(db,"reward_siswa"),
+    where("siswaId","==",siswaId)
+  ));
+
+  
+
+const tbody = document.querySelector("#tabelDetail tbody");
+
+// 🔥 WAJIB INI
+tbody.innerHTML = "";
+
+snap.forEach(d=>{
+  const r = d.data();
+
+  let tgl = "";
+  let jam = "";
+
+  if(r.dibuat){
+    const waktu = r.dibuat.toDate();
+
+    tgl = waktu.toLocaleDateString("id-ID");
+    jam = waktu.toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  }
+
+  tbody.innerHTML += `
+    <tr>
+      <td>
+        ${tgl}<br>
+        <small>${jam}</small>
+      </td>
+      <td>${r.poin}</td>
+      <td>${r.namaGuru||"-"}</td>
+      <td>${r.keterangan||"-"}</td>
+      <td>
+        <button onclick="editReward('${d.id}',${r.poin})">✏️</button>
+        <button onclick="hapusReward('${d.id}')">❌</button>
+      </td>
+    </tr>
+  `;
+});
+
+
+
+
+  document.getElementById("detailBox").style.display="block";
+};
+
+
+/* ================= HAPUS ================= */
+window.hapusReward = async function(id){
+  if(confirm("Hapus data?")){
+    await deleteDoc(doc(db,"reward_siswa",id));
+
+    alert("Terhapus");
+
+    loadRekap();
+
+    // 🔥 TAMBAHAN INI
+    if(siswaAktif){
+      loadDetail(siswaAktif, namaSiswaAktif);
+    }
+  }
+};
+
+
+/* ================= EDIT ================= */
+window.editReward = async function(id,poin){
+  const baru = prompt("Edit poin:",poin);
+  if(!baru) return;
+
+  await updateDoc(doc(db,"reward_siswa",id),{
+    poin: parseInt(baru)
+  });
+
+  alert("Update berhasil");
+
+  loadRekap();
+
+  // 🔥 TAMBAHAN INI
+  if(siswaAktif){
+    loadDetail(siswaAktif, namaSiswaAktif);
+  }
+};
+</script>
+
+</body>
+</html>
