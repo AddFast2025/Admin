@@ -77,6 +77,7 @@ h1{
 <button class="btn-kuning" onclick="tampilMenu('portal')">Portal</button>
 <button class="btn-kuning" onclick="tampilMenu('nilai')">Nilai</button>
   <button class="btn-kuning" onclick="tampilMenu('donasi')">Donasi</button>
+  <button class="btn-kuning" onclick="tampilMenu('reward')">Reward</button>
 
 
 </div>
@@ -101,6 +102,11 @@ function tampilMenu(menu){
        "Riwayat Nilai Siswa"
     ],
 
+
+      reward:[
+      "Kasih Reward",
+      "Kelola Reward",
+    ],
 
 
     
@@ -229,7 +235,15 @@ else if(menu==="subuh" && teks==="Filter Nilai"){
       }
 
 
+else if(menu==="reward" && teks==="Kasih Reward"){
+window.open("reward/kasih_reward.html","blank");
+}
+else if(menu==="reward" && teks==="Kelola Reward"){
+window.open("reward/kelola_reward.html","blank");
+}
 
+
+                    
 
 
                     
