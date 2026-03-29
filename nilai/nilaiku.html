@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Nilaiku</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{font-family:Arial;background:#f4f6f8;padding:20px}
+.card{max-width:900px;margin:auto;background:#fff;padding:20px;border-radius:10px}
+
+h2{text-align:center}
+
+select,button{
+  width:100%;
+  padding:10px;
+  margin-top:8px;
+  border-radius:8px;
+  border:1px solid #ccc;
+}
+
+button{
+  background:#2e7d32;
+  color:#fff;
+  border:none;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+  table-layout:fixed;
+}
+th,td{
+  border:1px solid #ddd;
+  padding:6px;
+  font-size:13px;
+  word-break:break-word;
+}
+th{background:#1565c0;color:white}
+
+.section{margin-top:20px}
+
+.info{
+  background:#f1f5f9;
+  padding:10px;
+  border-radius:8px;
+  margin-top:10px;
+  font-size:14px;
+}
+
+.total-box{
+  margin-top:10px;
+  padding:10px;
+  background:#e8f5e9;
+  border-radius:8px;
+  font-size:16px;
+  font-weight:bold;
+  color:#2e7d32;
+}
+
+/* tabel khusus */
+.jamaah th:nth-child(1),
+.subuh th:nth-child(1),
+.absen th:nth-child(1){width:10px;text-align:center}
+
+.jamaah th:nth-child(2),
+.subuh th:nth-child(2),
+.absen th:nth-child(2){width:110px}
+
+.jamaah th:nth-child(3),
+.subuh th:nth-child(3),
+.absen th:nth-child(3){width:10px;text-align:center}
+
+.hafalan th:nth-child(1){width:20px}
+.hafalan th:nth-child(2){width:60px}
+.hafalan th:nth-child(3){width:90px}
+.hafalan th:nth-child(4){width:120px}
+.hafalan th:nth-child(5){width:30px;text-align:center}
+
+.reward th:nth-child(1){width:20px}
+.reward th:nth-child(2){width:60px}
+.reward th:nth-child(3){width:90px}
+.reward th:nth-child(4){width:120px}
+.reward th:nth-child(5){width:30px;text-align:center}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+
+<h2>📊 Nilaiku</h2>
+
+<h3 id="namaLembaga"></h3>
+
+<input type="month" id="bulan">
+
+<select id="kelas"></select>
+<select id="rombel"></select>
+<select id="siswa"></select>
+
+<button onclick="loadData()">Tampilkan</button>
+
+<div id="infoBox" class="info"></div>
+<div id="totalBox" class="total-box"></div>
+<div id="hasil"></div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, getDocs, query, where }
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey:"AIza...",
+  authDomain:"datasiswa-c10f4.firebaseapp.com",
+  projectId:"datasiswa-c10f4"
+});
+const db = getFirestore(app);
+
+let lembagaId="", namaLembaga="";
+
+/* ===== DEFAULT BULAN ===== */
+const now = new Date();
+document.getElementById("bulan").value =
+`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+
+/* ===== POPUP KODE ===== */
+async function mintaKode(){
+  let kode = localStorage.getItem("kodeLembaga");
+  if(!kode) kode = prompt("Masukkan kode lembaga:");
+  if(!kode) return;
+
+  const snap = await getDocs(query(collection(db,"lembaga"),where("kode","==",kode)));
+
+  if(snap.empty){
+    alert("Kode salah");
+    localStorage.removeItem("kodeLembaga");
+    mintaKode();
+    return;
+  }
+
+  const data = snap.docs[0];
+  lembagaId = data.id;
+  namaLembaga = data.data().nama;
+
+  localStorage.setItem("kodeLembaga", kode);
+
+  document.getElementById("namaLembaga").innerText = namaLembaga;
+
+  loadKelas();
+}
+mintaKode();
+
+/* ===== LOAD KELAS ===== */
+async function loadKelas(){
+  const snap = await getDocs(query(collection(db,"kelas"),where("lembagaId","==",lembagaId)));
+
+  kelas.innerHTML = "<option value=''>Pilih Kelas</option>";
+  snap.forEach(d=>{
+    kelas.innerHTML += `<option value="${d.id}">${d.data().nama}</option>`;
+  });
+}
+
+/* ===== ROMBEL ===== */
+kelas.onchange = async ()=>{
+  const snap = await getDocs(query(collection(db,"rombel"),where("kelasId","==",kelas.value)));
+
+  rombel.innerHTML = "<option value=''>Pilih Rombel</option>";
+  snap.forEach(d=>{
+    rombel.innerHTML += `<option value="${d.id}">${d.data().nama}</option>`;
+  });
+};
+
+/* ===== SISWA ===== */
+rombel.onchange = async ()=>{
+  const snap = await getDocs(query(collection(db,"siswa"),where("rombelId","==",rombel.value)));
+
+  siswa.innerHTML = "<option value=''>Pilih Nama</option>";
+  snap.forEach(d=>{
+    siswa.innerHTML += `<option value="${d.id}">${d.data().nama}</option>`;
+  });
+};
+
+/* ===== LOAD DATA ===== */
+window.loadData = async ()=>{
+
+  let totalNilai = 0;
+
+  const siswaId = siswa.value;
+  if(!siswaId) return;
+
+  const namaSiswa = siswa.options[siswa.selectedIndex].text;
+  const kelasNama = kelas.options[kelas.selectedIndex].text;
+  const rombelNama = rombel.options[rombel.selectedIndex].text;
+
+  const [y,m] = document.getElementById("bulan").value.split("-");
+  const start = new Date(`${y}-${m}-01`);
+  const end   = new Date(y, m, 0);
+
+  infoBox.innerHTML = `
+    <b>Nama Lembaga:</b> ${namaLembaga}<br>
+    <b>Nama Siswa:</b> ${namaSiswa}<br>
+    <b>Kelas:</b> ${kelasNama} ${rombelNama}<br>
+    <b>Rekap Bulan:</b> ${y}-${m}
+  `;
+
+  hasil.innerHTML="Memuat...";
+
+  async function ambil(col){
+    const snap = await getDocs(query(collection(db,col),where("siswaId","==",siswaId)));
+    const arr=[];
+    snap.forEach(d=>{
+      const r=d.data();
+      if(!r.dibuat) return;
+      const t=r.dibuat.toDate();
+      if(t>=start && t<=end){
+        const nilai = r.nilai ?? r.nilaiPeroleh ?? r.poin ?? 0;
+        totalNilai += nilai;
+
+        arr.push({
+          tgl:t.toLocaleDateString("id-ID"),
+          nilai
+        });
+      }
+    });
+    return arr;
+  }
+
+  function table(title,data,extra=""){
+    let html=`<div class="section"><h3>${title}</h3>`;
+    html+=`<table class="${title.toLowerCase()}">
+    <tr><th>No</th><th>Tanggal</th>${extra}<th>Nilai</th></tr>`;
+
+    let no=1;
+    data.forEach(r=>{
+      html+=`<tr>
+        <td>${no++}</td>
+        <td>${r.tgl}</td>
+        ${r.extra||""}
+        <td>${r.nilai}</td>
+      </tr>`;
+    });
+
+    html+="</table></div>";
+    return html;
+  }
+
+  const jamaah = await ambil("absen_jamaah_subuh");
+  const subuh  = await ambil("lapor_subuh");
+  const absen  = await ambil("absen_pagi");
+
+  const hafSnap = await getDocs(query(collection(db,"hafalan_daftar"),where("siswaId","==",siswaId)));
+  const hafalan=[];
+  hafSnap.forEach(d=>{
+    const r=d.data();
+    if(!r.dibuat) return;
+    const t=r.dibuat.toDate();
+    if(t>=start && t<=end){
+      totalNilai += (r.nilai||0);
+
+      hafalan.push({
+        tgl:t.toLocaleDateString("id-ID"),
+        nilai:r.nilai||0,
+        extra:`<td>${r.mapelNama||"-"}</td><td>${r.namaMateri||"-"}</td>`
+      });
+    }
+  });
+
+  const rewSnap = await getDocs(query(collection(db,"reward_siswa"),where("siswaId","==",siswaId)));
+  const reward=[];
+  rewSnap.forEach(d=>{
+    const r=d.data();
+    if(!r.dibuat) return;
+    const t=r.dibuat.toDate();
+    if(t>=start && t<=end){
+      totalNilai += (r.poin||0);
+
+      reward.push({
+        tgl:t.toLocaleDateString("id-ID"),
+        nilai:r.poin||0,
+        extra:`<td>${r.namaGuru||"-"}</td><td>${r.keterangan||"-"}</td>`
+      });
+    }
+  });
+
+  document.getElementById("totalBox").innerHTML = `Total Nilai: ${totalNilai}`;
+
+  hasil.innerHTML=
+    table("Jamaah",jamaah)+
+    table("Subuh",subuh)+
+    table("Absen",absen)+
+    table("Hafalan",hafalan,"<th>Mapel</th><th>Materi</th>")+
+    table("Reward",reward,"<th>Guru</th><th>Keterangan</th>");
+};
+</script>
+
+</body>
+</html>
