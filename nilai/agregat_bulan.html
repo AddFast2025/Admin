@@ -230,6 +230,7 @@ document.getElementById("btn").onclick = async ()=>{
   lapor: 0,
   pagi: 0,
   hafalan: 0,
+ reward: 0, // 🔥 TAMBAHAN
   total: 0
 };
   });
@@ -277,12 +278,46 @@ const tgl = tglField.toDate();
 });
 }
 
+
+async function loadReward(){
+
+  const snap = await getDocs(query(
+    collection(db,"reward_siswa"),
+    where("lembagaId","==",lembagaEl.value),
+    where("kelasId","==",kelasEl.value),
+    where("rombelId","==",rombelEl.value)
+  ));
+
+  const startDate = new Date(start);
+  const endDate   = new Date(end);
+
+  snap.forEach(d=>{
+    const r = d.data();
+
+    if(!r.dibuat) return;
+
+    const tgl = r.dibuat.toDate();
+
+    if(tgl >= startDate && tgl <= endDate){
+
+      if(siswaMap[r.siswaId]){
+        const nilai = r.poin || 0;
+
+        siswaMap[r.siswaId].reward += nilai;
+        siswaMap[r.siswaId].total += nilai;
+      }
+
+    }
+  });
+}
+
   /* ===== 3. Ambil 3 koleksi ===== */
   await Promise.all([
     loadNilai("absen_jamaah_subuh","jamaah"),
     loadNilai("lapor_subuh","lapor"),
     loadNilai("absen_pagi","pagi"),
-     loadNilai("hafalan_daftar","hafalan") // ← TAMBAHAN
+     loadNilai("hafalan_daftar","hafalan"), // ← TAMBAHAN
+  loadReward() // 🔥 TAMBAHAN
   ]);
 
   /* ===== 4. Render ===== */
@@ -299,8 +334,9 @@ const tgl = tglField.toDate();
           <div class="rincian">
             Jamaah ${r.jamaah} + 
             Subuh ${r.lapor} + 
-            Absen ${r.pagi}+
-             Hafalan ${r.hafalan}
+            Absen ${r.pagi} +
+             Hafalan ${r.hafalan} +
+Reward ${r.reward}
           </div>
         </td>
         <td><b>${r.total}</b></td>
