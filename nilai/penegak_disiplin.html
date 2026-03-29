@@ -249,6 +249,31 @@ async function loadNilai(colName){
   });
 }
 
+async function loadReward(){
+
+  const snap = await getDocs(query(
+    collection(db,"reward_siswa"),
+    where("lembagaId","==",lembagaEl.value)
+  ));
+
+  snap.forEach(d=>{
+    const r = d.data();
+
+    if(!r.dibuat) return;
+
+    const tgl = r.dibuat.toDate();
+    if(tgl < startDate || tgl > endDate) return;
+
+    if(
+      siswaMap[r.rombelId] &&
+      siswaMap[r.rombelId][r.siswaId]
+    ){
+      const nilai = r.poin || 0;
+
+      siswaMap[r.rombelId][r.siswaId].total += nilai;
+    }
+  });
+}
 
 
 
@@ -256,7 +281,9 @@ await Promise.all([
   loadNilai("absen_jamaah_subuh"),
   loadNilai("lapor_subuh"),
   loadNilai("absen_pagi"),
-  loadNilai("hafalan_daftar") // ← TAMBAHAN
+  loadNilai("hafalan_daftar"), // ← TAMBAHAN
+ loadReward() // 🔥 TAMBAHAN
+
 ]);
 
   /* ===== Render ===== */
