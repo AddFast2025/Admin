@@ -208,27 +208,57 @@ window.loadData = async ()=>{
   `;
 
   hasil.innerHTML="Memuat...";
+async function ambil(col){
+  const snap = await getDocs(query(
+    collection(db,col),
+    where("siswaId","==",siswaId)
+  ));
 
-  async function ambil(col){
-    const snap = await getDocs(query(collection(db,col),where("siswaId","==",siswaId)));
-    const arr=[];
-    snap.forEach(d=>{
-      const r=d.data();
-      if(!r.dibuat) return;
-      const t=r.dibuat.toDate();
-      if(t>=start && t<=end){
-        const nilai = r.nilai ?? r.nilaiPeroleh ?? r.poin ?? 0;
-        totalNilai += nilai;
+  const arr = [];
 
-        arr.push({
-          tgl:t.toLocaleDateString("id-ID"),
-          nilai
-        });
+  snap.forEach(d=>{
+    const r = d.data();
+
+    let masuk = false;
+    let tglText = "";
+
+    // 🔥 KHUSUS LAPOR SUBUH
+    if(col === "lapor_subuh"){
+
+      if(r.bulan === document.getElementById("bulan").value){
+        masuk = true;
+        tglText = r.tanggal; // pakai tanggal langsung
       }
-    });
-    return arr;
-  }
 
+    } else {
+
+      // 🔵 KOLEKSI LAIN (tetap pakai lama)
+      if(!r.dibuat) return;
+
+      const t = r.dibuat.toDate();
+
+      if(t >= start && t <= end){
+        masuk = true;
+        tglText = t.toLocaleDateString("id-ID");
+      }
+
+    }
+
+    if(masuk){
+      const nilai = r.nilai ?? r.nilaiPeroleh ?? r.poin ?? 0;
+
+      totalNilai += nilai;
+
+      arr.push({
+        tgl: tglText,
+        nilai
+      });
+    }
+
+  });
+
+  return arr;
+}
   function table(title,data,extra=""){
     let html=`<div class="section"><h3>${title}</h3>`;
     html+=`<table class="${title.toLowerCase()}">
