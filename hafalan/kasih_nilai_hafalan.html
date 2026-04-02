@@ -174,7 +174,7 @@ window.cekKodeSekolah = async () => {
   }
 
   const snap = await getDocs(
-    query(
+   query(
       collection(db,"lembaga"),
       where("kode","==",kode),
       where("aktif","==",true)
@@ -185,6 +185,7 @@ window.cekKodeSekolah = async () => {
     kodeInfo.innerText = "Kode tidak ditemukan";
     return;
   }
+
 
   const docData = snap.docs[0];
 
@@ -318,6 +319,22 @@ window.loadAntrian = async () => {
     return;
   }
 
+const data = [];
+
+snap.forEach(d => {
+  data.push({
+    id: d.id,
+    ...d.data()
+  });
+});
+
+// urutkan berdasarkan tanggal daftar
+data.sort((a, b) => {
+  const tglA = a.tanggalDaftar?.toDate ? a.tanggalDaftar.toDate() : new Date(a.tanggalDaftar);
+  const tglB = b.tanggalDaftar?.toDate ? b.tanggalDaftar.toDate() : new Date(b.tanggalDaftar);
+
+  return tglA - tglB;
+});
   let html = `
   <table>
     <tr>
@@ -329,8 +346,7 @@ window.loadAntrian = async () => {
     </tr>`;
   let no = 1;
 
-  snap.forEach(d => {
-    const r = d.data();
+data.forEach(r => {
 
     if (kelasEl.value && r.kelasId !== kelasEl.value) return;
     if (rombelEl.value && r.rombelId !== rombelEl.value) return;
@@ -340,21 +356,29 @@ window.loadAntrian = async () => {
     <tr>
       <td>${no++}</td>
       <td>${r.kelasNama}/${r.rombelNama}</td>
-      <td>${r.namaSiswa}</td>
+      <td>
+  ${r.namaSiswa}
+  <br>
+  <small style="color:gray;">
+    ${formatTanggal(r.tanggalDaftar)}
+  </small>
+</td>
+
       <td>${r.mapelNama}<br><small>${r.namaMateri}</small></td>
       <td>
   <button class="kecil"
-    onclick='bukaNilai("${d.id}", ${JSON.stringify(r)})'>
+    onclick='bukaNilai("${r.id}", ${JSON.stringify(r)})'>
     Nilai
   </button>
 
   <br><br>
 
   <button class="kecil"
-    style="background:#c62828; color:white;"
-    onclick='hapusAntrian("${d.id}", "${r.namaSiswa}", "${r.mapelNama}", "${r.namaMateri}")'>
-    🗑 Hapus
-  </button>
+  style="background:#c62828; color:white;"
+  onclick='hapusAntrian("${r.id}", "${r.namaSiswa}", "${r.mapelNama}", "${r.namaMateri}")'>
+  🗑 Hapus
+</button>
+
 </td>
     </tr>`;
   });
@@ -417,7 +441,6 @@ window.simpanNilai = async () => {
   panel.style.display = "none";
   loadAntrian();
 };
-import { deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 window.hapusAntrian = async (id, nama, mapel, materi) => {
 
@@ -427,12 +450,29 @@ window.hapusAntrian = async (id, nama, mapel, materi) => {
 
   if (!konfirmasi) return;
 
-  await deleteDoc(doc(db, "hafalan_daftar", id));
+  await updateDoc(doc(db, "hafalan_daftar", id), {
+    status: "selesai",
+    tanggalSelesai: new Date()
+  });
 
-  alert("Antrian berhasil dihapus");
+  alert("Antrian dihapus (nilai tetap aman)");
 
   loadAntrian();
 };
+
+function formatTanggal(tgl) {
+  if (!tgl) return "-";
+
+  const d = tgl.toDate ? tgl.toDate() : new Date(tgl);
+
+  return d.toLocaleString("id-ID", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
 
 </script>
 
