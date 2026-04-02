@@ -360,6 +360,11 @@ mapelEl.onchange = async () => {
 
 /* ================= KERANJANG ================= */
 window.tambahKeranjang = async () => {
+if (!siswaEl.value) {
+  infoEl.innerText = "Pilih siswa terlebih dahulu";
+  return;
+}
+  
   infoEl.innerText = "";
   const opt = materiEl.selectedOptions[0];
   if (!opt) return;
