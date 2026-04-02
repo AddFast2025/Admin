@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Input Nilai Manual</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body { font-family: Arial; background:#f4f6f8; padding:20px; }
+.card { max-width:700px; margin:auto; background:#fff; padding:20px; border-radius:8px; }
+
+label { font-weight:bold; display:block; margin-top:10px; }
+select, input, button { width:100%; padding:8px; margin-top:5px; }
+
+button { background:#1565c0; color:white; border:none; cursor:pointer; }
+button:disabled { background:#9e9e9e; }
+</style>
+</head>
+
+<body>
+
+<div class="card">
+<h2 align="center">Input Nilai Manual</h2>
+
+<label>Lembaga</label>
+<select id="lembaga"></select>
+
+<label>Kelas</label>
+<select id="kelas"></select>
+<label>Rombel</label>
+<select id="rombel"></select>
+
+<label>Siswa</label>
+<input type="text" id="cariSiswa" placeholder="Cari nama siswa...">
+<select id="siswa"></select>
+
+<label>Mapel</label>
+<select id="mapel"></select>
+
+<label>Materi</label>
+<select id="materi"></select>
+
+<label>Nilai Maksimal</label>
+<input id="nilaiMaks" disabled>
+
+<label>Nilai</label>
+<input id="nilai" type="number">
+
+<button id="btnSimpan" onclick="simpan()">Simpan Nilai</button>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getFirestore, collection, getDocs,
+  query, where, doc, setDoc
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD8SIXXPm_c-TJiaRjHbrishFtU2NICm9M",
+  authDomain: "datasiswa-c10f4.firebaseapp.com",
+  projectId: "datasiswa-c10f4"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const lembagaEl = document.getElementById("lembaga");
+const kelasEl = document.getElementById("kelas");
+const rombelEl = document.getElementById("rombel");
+const siswaEl = document.getElementById("siswa");
+const mapelEl = document.getElementById("mapel");
+const materiEl = document.getElementById("materi");
+
+let semuaSiswa = [];
+
+/* LOAD LEMBAGA */
+async function loadLembaga() {
+  const snap = await getDocs(collection(db,"lembaga"));
+  lembagaEl.innerHTML = "<option value=''>Pilih</option>";
+  snap.forEach(d => lembagaEl.innerHTML += `<option value="${d.id}">${d.data().nama}</option>`);
+}
+loadLembaga();
+
+/* LOAD KELAS */
+lembagaEl.onchange = async () => {
+  const snap = await getDocs(query(collection(db,"kelas"), where("lembagaId","==",lembagaEl.value)));
+  kelasEl.innerHTML = "<option value=''>Pilih</option>";
+  snap.forEach(d => kelasEl.innerHTML += `<option value="${d.id}">${d.data().nama}</option>`);
+};
+
+/* LOAD SISWA */
+kelasEl.onchange = async () => {
+
+  const snap = await getDocs(
+    query(collection(db,"rombel"), where("kelasId","==",kelasEl.value))
+  );
+
+  rombelEl.innerHTML = "<option value=''>Pilih</option>";
+  snap.forEach(d => rombelEl.innerHTML += `<option value="${d.id}">${d.data().nama}</option>`);
+};
+
+rombelEl.onchange = async () => {
+
+  const snap = await getDocs(
+    query(collection(db,"siswa"), where("rombelId","==",rombelEl.value))
+  );
+
+  semuaSiswa = [];
+  snap.forEach(d => {
+    semuaSiswa.push({ id: d.id, nama: d.data().nama });
+  });
+
+  tampilkanSiswa(semuaSiswa);
+};
+
+/* SEARCH SISWA */
+document.getElementById("cariSiswa").addEventListener("input", () => {
+  const keyword = document.getElementById("cariSiswa").value.toLowerCase();
+  const hasil = semuaSiswa.filter(s => s.nama.toLowerCase().includes(keyword));
+  tampilkanSiswa(hasil);
+});
+
+function tampilkanSiswa(data) {
+  siswaEl.innerHTML = "";
+  data.forEach(s => siswaEl.innerHTML += `<option value="${s.id}">${s.nama}</option>`);
+}
+
+/* LOAD MAPEL */
+async function loadMapel() {
+  const snap = await getDocs(collection(db,"mapel"));
+  mapelEl.innerHTML = "<option value=''>Pilih</option>";
+  snap.forEach(d => mapelEl.innerHTML += `<option value="${d.id}">${d.data().nama}</option>`);
+}
+loadMapel();
+
+/* LOAD MATERI */
+mapelEl.onchange = async () => {
+
+  if (!mapelEl.value) return;
+
+  console.log("MAPEL DIPILIH:", mapelEl.value);
+
+  const snap = await getDocs(
+    query(collection(db,"materi_hafalan"), where("mapelId","==", mapelEl.value))
+  );
+
+  console.log("JUMLAH MATERI:", snap.size);
+
+  materiEl.innerHTML = "<option value=''>Pilih Materi</option>";
+
+  if (snap.empty) {
+    materiEl.innerHTML += "<option value=''>Tidak ada materi</option>";
+    return;
+  }
+
+  snap.forEach(d => {
+    const data = d.data();
+
+    materiEl.innerHTML += `
+      <option value="${d.id}" data-maks="${data.nilaiMaks}">
+        ${data.namaMateri}
+      </option>
+    `;
+  });
+};
+
+/* TAMPIL NILAI MAKS */
+materiEl.onchange = () => {
+  const maks = materiEl.options[materiEl.selectedIndex].dataset.maks;
+  document.getElementById("nilaiMaks").value = maks;
+};
+
+/* SIMPAN */
+window.simpan = async () => {
+
+  const nilai = Number(document.getElementById("nilai").value);
+  const nilaiMaks = Number(document.getElementById("nilaiMaks").value);
+
+  if (nilai > nilaiMaks) {
+    alert("Nilai tidak boleh melebihi maksimal");
+    return;
+  }
+
+  const siswaId = siswaEl.value;
+  const mapelId = mapelEl.value;
+  const materiId = materiEl.value;
+
+  const docId = `${siswaId}_${mapelId}_${materiId}`;
+
+  await setDoc(doc(db,"hafalan_daftar", docId), {
+  siswaId,
+  namaSiswa: siswaEl.options[siswaEl.selectedIndex].text,
+
+  lembagaId: lembagaEl.value,
+  lembagaNama: lembagaEl.options[lembagaEl.selectedIndex].text,
+
+  kelasId: kelasEl.value,
+  kelasNama: kelasEl.options[kelasEl.selectedIndex].text,
+
+  rombelId: rombelEl.value,
+  rombelNama: rombelEl.options[rombelEl.selectedIndex].text,
+
+  mapelId,
+  mapelNama: mapelEl.options[mapelEl.selectedIndex].text,
+
+  materiId,
+  namaMateri: materiEl.options[materiEl.selectedIndex].text,
+
+  nilaiMaks,
+  nilaiPeroleh: nilai,
+
+  status: nilai === nilaiMaks ? "lulus" : "dinilai",
+
+  tanggalDaftar: new Date(),   // 🔥 penting
+  tanggalNilai: new Date()     // 🔥 penting
+});
+
+  alert("Nilai berhasil disimpan!");
+};
+
+
+</script>
+
+</body>
+</html>
