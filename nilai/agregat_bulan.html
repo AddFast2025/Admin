@@ -236,47 +236,75 @@ document.getElementById("btn").onclick = async ()=>{
   });
 
   /* ===== 2. Loader nilai ===== */
- async function loadNilai(colName, field){
+ 
+  async function loadNilai(colName, field){
 
-  const snap = await getDocs(query(
-    collection(db,colName),
-    where("lembagaId","==",lembagaEl.value),
-    where("kelasId","==",kelasEl.value),
-    where("rombelId","==",rombelEl.value)
-  ));
+  let snap;
+
+  // 🔥 KHUSUS LAPOR SUBUH
+  if(colName === "lapor_subuh"){
+
+    snap = await getDocs(query(
+      collection(db,colName),
+      where("lembagaId","==",lembagaEl.value),
+      where("kelasId","==",kelasEl.value),
+      where("rombelId","==",rombelEl.value),
+      where("bulan","==",bulanEl.value) // ✅ pakai bulan
+    ));
+
+  } else {
+
+    // 🔵 KOLEKSI LAIN (tetap pakai cara lama)
+    snap = await getDocs(query(
+      collection(db,colName),
+      where("lembagaId","==",lembagaEl.value),
+      where("kelasId","==",kelasEl.value),
+      where("rombelId","==",rombelEl.value)
+    ));
+
+  }
 
   const startDate = new Date(start);
   const endDate   = new Date(end);
 
- snap.forEach(d=>{
-  const r = d.data();
-  
-  
-  
-  // Tentukan field tanggal
-let tglField = r.dibuat ?? r.tanggalNilai ?? r.tanggalDaftar;
+  snap.forEach(d=>{
+    const r = d.data();
 
-if(!tglField) return;
+    // 🔥 KHUSUS LAPOR SUBUH → langsung ambil tanpa filter tanggal
+    if(colName === "lapor_subuh"){
 
-const tgl = tglField.toDate();
+      if(siswaMap[r.siswaId]){
+        const nilai = r.nilai ?? r.nilaiPeroleh ?? 0;
 
+        siswaMap[r.siswaId][field] += nilai;
+        siswaMap[r.siswaId].total += nilai;
+      }
 
+    } else {
 
+      // 🔵 KOLEKSI LAIN → tetap pakai filter lama
+      let tglField = r.dibuat ?? r.tanggalNilai ?? r.tanggalDaftar;
 
+      if(!tglField) return;
 
-  if(tgl >= startDate && tgl <= endDate){
+      const tgl = tglField.toDate();
 
-    if(siswaMap[r.siswaId]){
+      if(tgl >= startDate && tgl <= endDate){
 
-      const nilai = r.nilai ?? r.nilaiPeroleh ?? 0;
+        if(siswaMap[r.siswaId]){
+          const nilai = r.nilai ?? r.nilaiPeroleh ?? 0;
 
-      siswaMap[r.siswaId][field] += nilai;
-      siswaMap[r.siswaId].total += nilai;
+          siswaMap[r.siswaId][field] += nilai;
+          siswaMap[r.siswaId].total += nilai;
+        }
+
+      }
+
     }
 
-  }
-});
+  });
 }
+
 
 
 async function loadReward(){
