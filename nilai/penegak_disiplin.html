@@ -222,31 +222,58 @@ document.getElementById("btn").onclick = async ()=>{
   });
 
   /* ===== Loader nilai ===== */
-  
-async function loadNilai(colName){
-  const snap = await getDocs(query(
-    collection(db,colName),
-    where("lembagaId","==",lembagaEl.value)
-  ));
+  async function loadNilai(colName){
 
-  snap.forEach(d=>{
-    const r = d.data();
+  let snap;
 
-    // Ambil field tanggal fleksibel
-    let tglField = r.dibuat ?? r.tanggalNilai ?? r.tanggalDaftar;
-    if(!tglField) return;
+  // 🔥 KHUSUS LAPOR SUBUH
+  if(colName === "lapor_subuh"){
 
-    const tgl = tglField.toDate();
-    if(tgl < startDate || tgl > endDate) return;
+    snap = await getDocs(query(
+      collection(db,colName),
+      where("lembagaId","==",lembagaEl.value),
+      where("bulan","==",bulanEl.value) // ✅ pakai bulan
+    ));
 
-    if(
-      siswaMap[r.rombelId] &&
-      siswaMap[r.rombelId][r.siswaId]
-    ){
-      const nilai = r.nilai ?? r.nilaiPeroleh ?? 0;
-      siswaMap[r.rombelId][r.siswaId].total += nilai;
-    }
-  });
+    snap.forEach(d=>{
+      const r = d.data();
+
+      if(
+        siswaMap[r.rombelId] &&
+        siswaMap[r.rombelId][r.siswaId]
+      ){
+        const nilai = r.nilai ?? r.nilaiPeroleh ?? 0;
+        siswaMap[r.rombelId][r.siswaId].total += nilai;
+      }
+    });
+
+  } else {
+
+    // 🔵 KOLEKSI LAIN (tetap pakai cara lama)
+    snap = await getDocs(query(
+      collection(db,colName),
+      where("lembagaId","==",lembagaEl.value)
+    ));
+
+    snap.forEach(d=>{
+      const r = d.data();
+
+      let tglField = r.dibuat ?? r.tanggalNilai ?? r.tanggalDaftar;
+      if(!tglField) return;
+
+      const tgl = tglField.toDate();
+      if(tgl < startDate || tgl > endDate) return;
+
+      if(
+        siswaMap[r.rombelId] &&
+        siswaMap[r.rombelId][r.siswaId]
+      ){
+        const nilai = r.nilai ?? r.nilaiPeroleh ?? 0;
+        siswaMap[r.rombelId][r.siswaId].total += nilai;
+      }
+    });
+
+  }
 }
 
 async function loadReward(){
