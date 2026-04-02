@@ -208,6 +208,8 @@ window.loadData = async ()=>{
   `;
 
   hasil.innerHTML="Memuat...";
+
+  
 async function ambil(col){
   const snap = await getDocs(query(
     collection(db,col),
@@ -281,24 +283,46 @@ async function ambil(col){
   const jamaah = await ambil("absen_jamaah_subuh");
   const subuh  = await ambil("lapor_subuh");
   const absen  = await ambil("absen_pagi");
+const hafSnap = await getDocs(query(
+  collection(db,"hafalan_daftar"),
+  where("siswaId","==",siswaId)
+));
 
-  const hafSnap = await getDocs(query(collection(db,"hafalan_daftar"),where("siswaId","==",siswaId)));
-  const hafalan=[];
-  hafSnap.forEach(d=>{
-    const r=d.data();
-    if(!r.dibuat) return;
-    const t=r.dibuat.toDate();
-    if(t>=start && t<=end){
-      totalNilai += (r.nilai||0);
+const hafalan = [];
 
-      hafalan.push({
-        tgl:t.toLocaleDateString("id-ID"),
-        nilai:r.nilai||0,
-        extra:`<td>${r.mapelNama||"-"}</td><td>${r.namaMateri||"-"}</td>`
-      });
-    }
-  });
+hafSnap.forEach(d=>{
+  const r = d.data();
 
+  let tgl;
+
+  // 🔥 PRIORITAS UTAMA
+  if(r.tanggalNilai){
+    tgl = r.tanggalNilai.toDate();
+  }
+  else if(r.tanggalDaftar){
+    tgl = r.tanggalDaftar.toDate();
+  }
+  else if(r.dibuat){
+    tgl = r.dibuat.toDate();
+  }
+  else{
+    return;
+  }
+
+  if(tgl >= start && tgl <= end){
+
+    const nilai = r.nilaiPeroleh ?? r.nilai ?? 0;
+
+    totalNilai += nilai;
+
+    hafalan.push({
+      tgl: tgl.toLocaleDateString("id-ID"),
+      nilai: nilai,
+      extra:`<td>${r.mapelNama||"-"}</td><td>${r.namaMateri||"-"}</td>`
+    });
+
+  }
+});
   const rewSnap = await getDocs(query(collection(db,"reward_siswa"),where("siswaId","==",siswaId)));
   const reward=[];
   rewSnap.forEach(d=>{
