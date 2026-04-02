@@ -118,7 +118,9 @@ import {
   where,
   addDoc,
   deleteDoc,
-  doc
+  doc,
+  setDoc,
+  getDoc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 /* FIREBASE */
@@ -192,9 +194,28 @@ kelasEl.onchange = async () => {
 rombelEl.onchange = async () => {
   if (identitasTerkunci) return;
   siswaEl.innerHTML = "";
-  const snap = await getDocs(query(collection(db,"siswa"), where("rombelId","==",rombelEl.value)));
+
+  const snap = await getDocs(
+    query(collection(db,"siswa"), where("rombelId","==",rombelEl.value))
+  );
+
+  // 🔥 ubah ke array lalu sort
+  const data = [];
+  snap.forEach(d => {
+    data.push({
+      id: d.id,
+      nama: d.data().nama
+    });
+  });
+
+  // 🔥 urutkan A-Z
+  data.sort((a, b) => a.nama.localeCompare(b.nama, 'id'));
+
+  // tampilkan
   siswaEl.innerHTML = "<option value=''>-- Pilih --</option>";
-  snap.forEach(d => siswaEl.innerHTML += `<option value="${d.id}">${d.data().nama}</option>`);
+  data.forEach(d => {
+    siswaEl.innerHTML += `<option value="${d.id}">${d.nama}</option>`;
+  });
 };
 
 siswaEl.onchange = async () => {
@@ -504,26 +525,46 @@ window.daftarkanTerpilih = async () => {
 );
   if (!lanjut) return;
 
-  await addDoc(collection(db,"hafalan_daftar"), {
-    siswaId: siswaEl.value,
-    namaSiswa: siswaEl.options[siswaEl.selectedIndex].text,
-    lembagaId: lembagaEl.value,
-    lembagaNama: lembagaEl.options[lembagaEl.selectedIndex].text,
-    kelasId: kelasEl.value,
-    kelasNama: kelasEl.options[kelasEl.selectedIndex].text,
-    rombelId: rombelEl.value,
-    rombelNama: rombelEl.options[rombelEl.selectedIndex].text,
 
-    mapelId: k.mapelId,
-    mapelNama: k.mapelNama,
-    materiId: k.materiId,
-    namaMateri: k.namaMateri,
-    nilaiMaks: k.nilaiMaks,
 
-    nilaiPeroleh: null,
-    status: "daftar",
-    tanggalDaftar: new Date()
-  });
+const docId = `${siswaEl.value}_${k.mapelId}_${k.materiId}`;
+const ref = doc(db,"hafalan_daftar", docId);
+
+// ambil data lama
+const existing = await getDoc(ref);
+
+let nilaiLama = null;
+let tanggalNilaiLama = null;
+
+if (existing.exists()) {
+  const old = existing.data();
+  nilaiLama = old.nilaiPeroleh ?? null;
+  tanggalNilaiLama = old.tanggalNilai ?? null;
+}
+
+// simpan tanpa menghapus nilai lama
+await setDoc(ref, {
+  siswaId: siswaEl.value,
+  namaSiswa: siswaEl.options[siswaEl.selectedIndex].text,
+  lembagaId: lembagaEl.value,
+  lembagaNama: lembagaEl.options[lembagaEl.selectedIndex].text,
+  kelasId: kelasEl.value,
+  kelasNama: kelasEl.options[kelasEl.selectedIndex].text,
+  rombelId: rombelEl.value,
+  rombelNama: rombelEl.options[rombelEl.selectedIndex].text,
+
+  mapelId: k.mapelId,
+  mapelNama: k.mapelNama,
+  materiId: k.materiId,
+  namaMateri: k.namaMateri,
+  nilaiMaks: k.nilaiMaks,
+
+  nilaiPeroleh: nilaiLama,
+  status: "daftar",
+  tanggalDaftar: new Date(),
+  tanggalNilai: tanggalNilaiLama
+});
+
 
   await deleteDoc(doc(db,"keranjang_hafalan", k.docId));
 
@@ -541,27 +582,43 @@ window.simpanPendaftaran = async () => {
   if (!keranjang.length) return;
 
   for (const k of keranjang) {
-    await addDoc(collection(db,"hafalan_daftar"), {
-      siswaId: siswaEl.value,
-      namaSiswa: siswaEl.options[siswaEl.selectedIndex].text,
-      lembagaId: lembagaEl.value,
-      lembagaNama: lembagaEl.options[lembagaEl.selectedIndex].text,
-      kelasId: kelasEl.value,
-      kelasNama: kelasEl.options[kelasEl.selectedIndex].text,
-      rombelId: rombelEl.value,
-      rombelNama: rombelEl.options[rombelEl.selectedIndex].text,
 
-      mapelId: k.mapelId,
-      mapelNama: k.mapelNama,
-      materiId: k.materiId,
-      namaMateri: k.namaMateri,
-      nilaiMaks: k.nilaiMaks,
+  const docId = `${siswaEl.value}_${k.mapelId}_${k.materiId}`;
+  const ref = doc(db,"hafalan_daftar", docId);
 
-      nilaiPeroleh: null,
-      status: "daftar",
-      tanggalDaftar: new Date()
-    });
+  const existing = await getDoc(ref);
+
+  let nilaiLama = null;
+  let tanggalNilaiLama = null;
+
+  if (existing.exists()) {
+    const old = existing.data();
+    nilaiLama = old.nilaiPeroleh ?? null;
+    tanggalNilaiLama = old.tanggalNilai ?? null;
   }
+
+  await setDoc(ref, {
+    siswaId: siswaEl.value,
+    namaSiswa: siswaEl.options[siswaEl.selectedIndex].text,
+    lembagaId: lembagaEl.value,
+    lembagaNama: lembagaEl.options[lembagaEl.selectedIndex].text,
+    kelasId: kelasEl.value,
+    kelasNama: kelasEl.options[kelasEl.selectedIndex].text,
+    rombelId: rombelEl.value,
+    rombelNama: rombelEl.options[rombelEl.selectedIndex].text,
+
+    mapelId: k.mapelId,
+    mapelNama: k.mapelNama,
+    materiId: k.materiId,
+    namaMateri: k.namaMateri,
+    nilaiMaks: k.nilaiMaks,
+
+    nilaiPeroleh: nilaiLama,
+    status: "daftar",
+    tanggalDaftar: new Date(),
+    tanggalNilai: tanggalNilaiLama
+  });
+}
 
   keranjang = [];
   renderKeranjang();
