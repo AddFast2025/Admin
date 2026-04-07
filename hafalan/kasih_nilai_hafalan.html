@@ -215,6 +215,8 @@ if (savedKode) {
 
 let aktifDocId = null;
 let aktifNilaiMaks = 0;
+let dataGlobal = {};
+
 
 /* LOAD MASTER */
 async function loadLembaga() {
@@ -299,6 +301,7 @@ window.cekKodeSekolah = async () => {
 /* LOAD ANTRIAN */
 window.loadAntrian = async () => {
   panel.style.display = "none";
+  listEl.style.display = "block";
   listEl.innerHTML = "Memuat...";
 
   if (!lembagaEl.value) {
@@ -347,6 +350,7 @@ data.sort((a, b) => {
   let no = 1;
 
 data.forEach(r => {
+    dataGlobal[r.id] = r; // ✅ TAMBAHAN INI
 
     if (kelasEl.value && r.kelasId !== kelasEl.value) return;
     if (rombelEl.value && r.rombelId !== rombelEl.value) return;
@@ -367,7 +371,7 @@ data.forEach(r => {
       <td>${r.mapelNama}<br><small>${r.namaMateri}</small></td>
       <td>
   <button class="kecil"
-    onclick='bukaNilai("${r.id}", ${JSON.stringify(r)})'>
+    onclick='bukaNilai("${r.id}")'>
     Nilai
   </button>
 
@@ -388,7 +392,10 @@ data.forEach(r => {
 };
 
 /* BUKA PANEL NILAI */
-window.bukaNilai = (id, r) => {
+window.bukaNilai = (id) => {
+
+  const r = dataGlobal[id]; // ✅ ambil dari dataGlobal
+
   aktifDocId = id;
   aktifNilaiMaks = r.nilaiMaks;
 
@@ -399,8 +406,11 @@ window.bukaNilai = (id, r) => {
   document.getElementById("p_materi").value = r.namaMateri;
   document.getElementById("p_maks").value = r.nilaiMaks;
   document.getElementById("p_nilai").value = "";
+  
 
   panel.style.display = "block";
+   listEl.style.display = "none"; // ✅ TAMBAHAN
+
   btnSimpan.disabled = true;
 };
 
@@ -439,6 +449,7 @@ window.simpanNilai = async () => {
   });
 
   panel.style.display = "none";
+  listEl.style.display = "block";
   loadAntrian();
 };
 
