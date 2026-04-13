@@ -157,7 +157,11 @@ let keranjang = [];
 
 let antrianMateri = {}; // materiId -> true
 let jumlahAntrian = 0;
+let antrianMapel = {}; // ✅ GLOBAL
+
 let identitasTerkunci = false;
+
+
 const MAX_KERANJANG = 5;
 const MAX_ANTRIAN_MAPEL = 20;
 
@@ -312,6 +316,9 @@ async function cekAntrian() {
   antrianMateri = {};
   jumlahAntrian = 0;
 
+
+
+
   const snap = await getDocs(
     query(
       collection(db,"hafalan_daftar"),
@@ -323,11 +330,16 @@ async function cekAntrian() {
   jumlahAntrian = snap.size;
 
   let html = "<ul>";
-  snap.forEach(d => {
-    const r = d.data();
-    antrianMateri[r.materiId] = true;
-    html += `<li>${r.mapelNama} - ${r.namaMateri}</li>`;
-  });
+antrianMapel = {}; // mapelId -> true
+
+snap.forEach(d => {
+  const r = d.data();
+  antrianMateri[r.materiId] = true;
+  antrianMapel[r.mapelId] = true; // ✅ TAMBAHAN
+  html += `<li>${r.mapelNama} - ${r.namaMateri}</li>`;
+});
+
+
   html += "</ul>";
 
   antrianEl.innerHTML = snap.empty ? "Tidak ada antrian" : html;
@@ -486,10 +498,11 @@ window.hapusKeranjang = async (i) => {
 
 window.daftarkanTerpilih = async () => {
 
-  if (jumlahAntrian > 0) {
-    alert("Masih ada antrian hafalan yang belum selesai");
-    return;
-  }
+ // Maksimal 3 antrian
+if (jumlahAntrian >= 2) {
+  alert("Maksimal 2 antrian hafalan");
+  return;
+}
 
   const radio = document.querySelector("input[name='pilihMateri']:checked");
 
@@ -500,7 +513,11 @@ window.daftarkanTerpilih = async () => {
 
   const index = Number(radio.value);
   const k = keranjang[index];
-
+// ❗ Tidak boleh mapel sama
+if (antrianMapel[k.mapelId]) {
+  alert("Mapel ini sudah ada dalam antrian, silakan ambil mapel lain");
+  return;
+}
   // 🔎 CEK JUMLAH ANTRIAN MAPEL TERSEBUT
   const snapMapel = await getDocs(
     query(
