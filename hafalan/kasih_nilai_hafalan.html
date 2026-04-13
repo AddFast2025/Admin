@@ -331,6 +331,9 @@ snap.forEach(d => {
   });
 });
 
+const siswaSudahDinilai = await getSiswaSudahDinilaiHariIni();
+
+
 // urutkan berdasarkan tanggal daftar
 data.sort((a, b) => {
   const tglA = a.tanggalDaftar?.toDate ? a.tanggalDaftar.toDate() : new Date(a.tanggalDaftar);
@@ -360,20 +363,40 @@ data.forEach(r => {
     <tr>
       <td>${no++}</td>
       <td>${r.kelasNama}/${r.rombelNama}</td>
-      <td>
+
+
+
+<td>
   ${r.namaSiswa}
   <br>
   <small style="color:gray;">
     ${formatTanggal(r.tanggalDaftar)}
   </small>
+
+  ${
+    siswaSudahDinilai[r.siswaId]
+
+      ? `<br><small style="color:#c62828; font-weight:bold;">
+           🔴 Sudah mendapatkan nilai hari ini
+         </small>`
+      : ""
+  }
 </td>
+
+
+
+
 
       <td>${r.mapelNama}<br><small>${r.namaMateri}</small></td>
       <td>
-  <button class="kecil"
-    onclick='bukaNilai("${r.id}")'>
-    Nilai
-  </button>
+
+<button class="kecil"
+  style="${siswaSudahDinilai[r.siswaId] ? 'background:#9e9e9e' : ''}"
+  ${siswaSudahDinilai[r.siswaId] ? "disabled" : ""}
+  onclick='bukaNilai("${r.id}")'>
+  ${siswaSudahDinilai[r.siswaId] ? "✔ Sudah" : "Nilai"}
+</button>
+
 
   <br><br>
 
@@ -484,6 +507,35 @@ function formatTanggal(tgl) {
     minute: "2-digit"
   });
 }
+
+async function getSiswaSudahDinilaiHariIni() {
+
+  const snap = await getDocs(
+    query(
+      collection(db,"hafalan_daftar"),
+      where("tanggalNilai","!=", null)
+    )
+  );
+
+  const hariIni = new Date().toDateString();
+  const map = {}; // siswaId -> true
+
+  snap.forEach(d => {
+    const r = d.data();
+    if (!r.tanggalNilai) return;
+
+    const tgl = r.tanggalNilai.toDate
+      ? r.tanggalNilai.toDate()
+      : new Date(r.tanggalNilai);
+
+    if (tgl.toDateString() === hariIni) {
+      map[r.siswaId] = true;
+    }
+  });
+
+  return map;
+}
+
 
 </script>
 
