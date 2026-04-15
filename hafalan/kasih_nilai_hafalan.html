@@ -400,9 +400,9 @@ data.forEach(r => {
 
   <br><br>
 
-  <button class="kecil"
+  <button class="kecil btn-hapus"
   style="background:#c62828; color:white;"
-  onclick='hapusAntrian("${r.id}", "${r.namaSiswa}", "${r.mapelNama}", "${r.namaMateri}")'>
+  data-id="${r.id}">
   🗑 Hapus
 </button>
 
@@ -535,6 +535,24 @@ async function getSiswaSudahDinilaiHariIni() {
 
   return map;
 }
+
+document.addEventListener("click", (e) => {
+
+  if (e.target.classList.contains("btn-hapus")) {
+
+    const id = e.target.dataset.id;
+
+    const r = dataGlobal[id]; // ambil data lengkap
+
+    hapusAntrian(
+      id,
+      r.namaSiswa,
+      r.mapelNama,
+      r.namaMateri
+    );
+  }
+
+});
 
 
 </script>
