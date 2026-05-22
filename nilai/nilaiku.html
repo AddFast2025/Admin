@@ -110,8 +110,17 @@ th{background:#1565c0;color:white}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, getDocs, query, where }
+import {
+  getFirestore,
+  collection,
+  getDocs,
+  query,
+  where,
+  Timestamp,
+  limit
+}
 from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
 
 const app = initializeApp({
   apiKey:"AIza...",
@@ -197,8 +206,16 @@ window.loadData = async ()=>{
   const rombelNama = rombel.options[rombel.selectedIndex].text;
 
   const [y,m] = document.getElementById("bulan").value.split("-");
-  const start = new Date(`${y}-${m}-01`);
-  const end   = new Date(y, m, 0);
+
+const start = Timestamp.fromDate(
+  new Date(`${y}-${m}-01 00:00:00`)
+);
+
+const end = Timestamp.fromDate(
+  new Date(y, m, 0, 23, 59, 59)
+);
+
+
 
   infoBox.innerHTML = `
     <b>Nama Lembaga:</b> ${namaLembaga}<br>
@@ -211,56 +228,65 @@ window.loadData = async ()=>{
 
   
 async function ambil(col){
-  const snap = await getDocs(query(
-    collection(db,col),
-    where("siswaId","==",siswaId)
-  ));
+
+  let q;
+
+  if(col === "lapor_subuh"){
+
+    q = query(
+      collection(db,col),
+      where("siswaId","==",siswaId),
+      where("bulan","==",document.getElementById("bulan").value),
+      limit(50)
+    );
+
+  } else {
+
+    q = query(
+      collection(db,col),
+      where("siswaId","==",siswaId),
+      where("dibuat",">=",start),
+      where("dibuat","<=",end),
+      limit(50)
+    );
+
+  }
+
+  const snap = await getDocs(q);
 
   const arr = [];
 
   snap.forEach(d=>{
+
     const r = d.data();
 
-    let masuk = false;
     let tglText = "";
 
-    // 🔥 KHUSUS LAPOR SUBUH
     if(col === "lapor_subuh"){
-
-      if(r.bulan === document.getElementById("bulan").value){
-        masuk = true;
-        tglText = r.tanggal; // pakai tanggal langsung
-      }
-
+      tglText = r.tanggal;
     } else {
-
-      // 🔵 KOLEKSI LAIN (tetap pakai lama)
-      if(!r.dibuat) return;
-
-      const t = r.dibuat.toDate();
-
-      if(t >= start && t <= end){
-        masuk = true;
-        tglText = t.toLocaleDateString("id-ID");
-      }
-
+      tglText = r.dibuat.toDate().toLocaleDateString("id-ID");
     }
 
-    if(masuk){
-      const nilai = r.nilai ?? r.nilaiPeroleh ?? r.poin ?? 0;
+    const nilai = r.nilai ?? r.nilaiPeroleh ?? r.poin ?? 0;
 
-      totalNilai += nilai;
+    totalNilai += nilai;
 
-      arr.push({
-        tgl: tglText,
-        nilai
-      });
-    }
+    arr.push({
+      tgl: tglText,
+      nilai
+    });
 
   });
 
   return arr;
 }
+
+
+
+
+
+
   function table(title,data,extra=""){
     let html=`<div class="section"><h3>${title}</h3>`;
     html+=`<table class="${title.toLowerCase()}">
@@ -283,10 +309,15 @@ async function ambil(col){
   const jamaah = await ambil("absen_jamaah_subuh");
   const subuh  = await ambil("lapor_subuh");
   const absen  = await ambil("absen_pagi");
+
 const hafSnap = await getDocs(query(
   collection(db,"hafalan_daftar"),
-  where("siswaId","==",siswaId)
+  where("siswaId","==",siswaId),
+  where("tanggalNilai",">=",start),
+  where("tanggalNilai","<=",end),
+  limit(50)
 ));
+
 
 const hafalan = [];
 
@@ -309,7 +340,7 @@ hafSnap.forEach(d=>{
     return;
   }
 
-  if(tgl >= start && tgl <= end){
+  
 
     const nilai = r.nilaiPeroleh ?? r.nilai ?? 0;
 
@@ -321,15 +352,22 @@ hafSnap.forEach(d=>{
       extra:`<td>${r.mapelNama||"-"}</td><td>${r.namaMateri||"-"}</td>`
     });
 
-  }
+  
 });
-  const rewSnap = await getDocs(query(collection(db,"reward_siswa"),where("siswaId","==",siswaId)));
+const rewSnap = await getDocs(query(
+  collection(db,"reward_siswa"),
+  where("siswaId","==",siswaId),
+  where("dibuat",">=",start),
+  where("dibuat","<=",end),
+  limit(50)
+));
+
   const reward=[];
   rewSnap.forEach(d=>{
     const r=d.data();
     if(!r.dibuat) return;
     const t=r.dibuat.toDate();
-    if(t>=start && t<=end){
+
       totalNilai += (r.poin||0);
 
       reward.push({
@@ -337,7 +375,7 @@ hafSnap.forEach(d=>{
         nilai:r.poin||0,
         extra:`<td>${r.namaGuru||"-"}</td><td>${r.keterangan||"-"}</td>`
       });
-    }
+    
   });
 
   document.getElementById("totalBox").innerHTML = `Total Nilai: ${totalNilai}`;
