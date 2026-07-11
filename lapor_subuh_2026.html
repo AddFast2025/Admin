@@ -278,21 +278,32 @@ localStorage.removeItem("lembagaNama");
 };
 
 /* LOAD KELAS */
-lembagaEl.onchange=async()=>{
-  kelasEl.innerHTML="<option value=''>Pilih</option>";
-  rombelEl.innerHTML="<option value=''>Pilih</option>";
-  siswaEl.innerHTML="<option value=''>Pilih</option>";
+lembagaEl.onchange = async () => {
+  kelasEl.innerHTML = "<option value=''>Pilih</option>";
+  rombelEl.innerHTML = "<option value=''>Pilih</option>";
+  siswaEl.innerHTML = "<option value=''>Pilih</option>";
 
-  const snap=await getDocs(
-    query(collection(db,"kelas"),where("lembagaId","==",lembagaEl.value))
+  const snap = await getDocs(
+    query(
+      collection(db, "kelas"),
+      where("lembagaId", "==", lembagaEl.value),
+      where("status", "==", "aktif")
+    )
   );
-  let data=[];
-  snap.forEach(d=>data.push({id:d.id,nama:d.data().nama}));
-  data.sort((a,b)=>parseInt(a.nama)-parseInt(b.nama));
-  data.forEach(k=>kelasEl.innerHTML+=
-    `<option value="${k.id}">${k.nama}</option>`
-  );
+
+  let data = [];
+  snap.forEach(d => data.push({
+    id: d.id,
+    nama: d.data().nama
+  }));
+
+  data.sort((a, b) => parseInt(a.nama) - parseInt(b.nama));
+
+  data.forEach(k => {
+    kelasEl.innerHTML += `<option value="${k.id}">${k.nama}</option>`;
+  });
 };
+
 
 /* ROMBEL */
 kelasEl.onchange=async()=>{
